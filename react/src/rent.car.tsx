@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
-import { getApp, getApps, initializeApp } from 'firebase/app';
-import { GoogleAuthProvider, OAuthProvider, getAuth, signInWithPopup } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { auth as firebaseAuth, providers } from './Firebase';
 
 const abuRentLogo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0%25' stop-color='%23ffd773'/><stop offset='55%25' stop-color='%23f0a215'/><stop offset='100%25' stop-color='%237a4e00'/></linearGradient><radialGradient id='bg' cx='50%25' cy='40%25' r='65%25'><stop offset='0%25' stop-color='%232a1c06'/><stop offset='100%25' stop-color='%230d0f14'/></radialGradient></defs><rect width='220' height='220' rx='28' fill='url(%23bg)'/><circle cx='110' cy='92' r='70' fill='none' stroke='url(%23g)' stroke-width='4' opacity='0.8'/><path d='M58 132 L96 52 L126 52 L164 132 L144 132 L133 108 L88 108 L78 132 Z M96 92 H124 L110 64 Z' fill='url(%23g)'/><text x='110' y='176' fill='url(%23g)' font-size='30' font-family='Segoe UI, Arial, sans-serif' text-anchor='middle' font-weight='700'>ABU RENT</text></svg>";
 
@@ -42,23 +42,12 @@ const MESSAGES_KEY = 'aburent_messages_v2';
 const LANG_KEY = 'aburent_lang_v2';
 const THEME_KEY = 'aburent_theme_v2';
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
-};
-const hasFirebaseConfig = Object.values(firebaseConfig).every(Boolean);
-const firebaseApp = hasFirebaseConfig
-  ? (getApps().length ? getApp() : initializeApp(firebaseConfig as Record<string, string>))
-  : null;
-const firebaseAuth = firebaseApp ? getAuth(firebaseApp) : null;
-
 const txt = {
   uz: {
     home: 'Bosh sahifa', fleet: 'Avtopark', bookings: 'Bandlar', contacts: 'Kontaktlar', about: 'Biz haqimizda',
     admin: 'Admin', logout: 'Chiqish', login: 'Kirish', welcome: 'Qaytganingizdan xursandmiz',
-    userOrMail: 'Foydalanuvchi nomi yoki email', pass: 'Parol', google: 'Google orqali kirish', apple: 'Apple orqali kirish',
+    userOrMail: 'Foydalanuvchi nomi yoki email', pass: 'Parol', google: 'Google orqali kirish', apple: 'Apple orqali kirish', microsoft: 'Microsoft orqali kirish',
+    emailLogin: 'Email bilan kirish', emailRegister: 'Email bilan ro‘yxatdan o‘tish',
     browse: 'Mashinalarni ko‘rish', reserve: 'Band qilish', out: 'Mavjud emas', phone: 'Telefon', pickup: 'Olish sanasi',
     ret: 'Qaytarish sanasi', addCar: 'Yangi mashina qo‘shish', save: 'Saqlash', del: 'O‘chirish', lang: 'Til',
     search: 'Nomi yoki yoqilg‘i bo‘yicha qidirish', upload: 'Mashina rasmlari (10 tagacha)', imageLinks: 'Rasm URLlari (har qatorga bitta)',
@@ -68,7 +57,8 @@ const txt = {
   ru: {
     home: 'Главная', fleet: 'Автопарк', bookings: 'Брони', contacts: 'Контакты', about: 'О нас',
     admin: 'Админ', logout: 'Выйти', login: 'Войти', welcome: 'С возвращением',
-    userOrMail: 'Имя пользователя или email', pass: 'Пароль', google: 'Войти через Google', apple: 'Войти через Apple',
+    userOrMail: 'Имя пользователя или email', pass: 'Пароль', google: 'Войти через Google', apple: 'Войти через Apple', microsoft: 'Войти через Microsoft',
+    emailLogin: 'Вход по email', emailRegister: 'Регистрация по email',
     browse: 'Смотреть авто', reserve: 'Забронировать', out: 'Нет в наличии', phone: 'Телефон', pickup: 'Дата получения',
     ret: 'Дата возврата', addCar: 'Добавить авто', save: 'Сохранить', del: 'Удалить', lang: 'Язык',
     search: 'Поиск по названию или топливу', upload: 'Изображения авто (до 10)', imageLinks: 'URL изображений (по одному в строке)',
@@ -78,7 +68,8 @@ const txt = {
   en: {
     home: 'Home', fleet: 'Fleet', bookings: 'Bookings', contacts: 'Contacts', about: 'About',
     admin: 'Admin', logout: 'Logout', login: 'Sign In', welcome: 'Welcome Back',
-    userOrMail: 'Username or email', pass: 'Password', google: 'Sign in with Google', apple: 'Sign in with Apple',
+    userOrMail: 'Username or email', pass: 'Password', google: 'Sign in with Google', apple: 'Sign in with Apple', microsoft: 'Sign in with Microsoft',
+    emailLogin: 'Sign in with email', emailRegister: 'Register with email',
     browse: 'Browse Cars', reserve: 'Reserve now', out: 'Out of stock', phone: 'Phone', pickup: 'Pickup date',
     ret: 'Return date', addCar: 'Add New Car', save: 'Save', del: 'Delete', lang: 'Language',
     search: 'Search by name or fuel', upload: 'Car images (up to 10)', imageLinks: 'Image URLs (one per line)',
@@ -149,6 +140,7 @@ function DLRentApp() {
   const [activeBookingId, setActiveBookingId] = useState('');
   const [messages, setMessages] = useState<Message[]>(readLS<Message[]>(MESSAGES_KEY, []));
   const [chatText, setChatText] = useState('');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   const [carName, setCarName] = useState('');
   const [carPrice, setCarPrice] = useState(100);
@@ -195,36 +187,51 @@ function DLRentApp() {
   const myBookings = useMemo(() => (role === 'admin' ? bookings : bookings.filter((b) => b.userName === userName)), [bookings, role, userName]);
   const activeMessages = useMemo(() => messages.filter((m) => m.bookingId === activeBookingId), [messages, activeBookingId]);
 
-  const login = (e: FormEvent<HTMLFormElement>) => {
+  const login = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const name = String(f.get('login') || '').trim();
     const pass = String(f.get('password') || '').trim();
     if (!name || !pass) return;
-    const nextRole: Role = name === 'Admin234' && pass === 'Admin123' ? 'admin' : 'user';
-    setRole(nextRole);
-    setUserName(name);
-    setPage(nextRole === 'admin' ? 'admin' : 'home');
-  };
 
-  const socialLogin = async (provider: 'google' | 'apple') => {
-    if (!firebaseAuth) {
-      alert('Firebase sozlanmagan. Iltimos .env ichiga VITE_FIREBASE_* kalitlarni kiriting.');
+    const nextRole: Role = name === 'Admin234' && pass === 'Admin123' ? 'admin' : 'user';
+    if (nextRole === 'admin') {
+      setRole(nextRole);
+      setUserName(name);
+      setPage('admin');
       return;
     }
+
+    if (!name.includes('@')) {
+      alert('Email kiriting. Masalan: user@gmail.com');
+      return;
+    }
+
     try {
-      const providerInstance = provider === 'google' ? new GoogleAuthProvider() : new OAuthProvider('apple.com');
-      if (provider === 'google') {
-        providerInstance.setCustomParameters({ prompt: 'select_account' });
-      }
+      const credential = authMode === 'register'
+        ? await createUserWithEmailAndPassword(firebaseAuth, name, pass)
+        : await signInWithEmailAndPassword(firebaseAuth, name, pass);
+      const displayName = credential.user.displayName || credential.user.email || name;
+      setRole('user');
+      setUserName(displayName);
+      setPage('home');
+    } catch (error) {
+      console.error('Email/password auth error:', error);
+      alert('Email/parol auth bajarilmadi. Firebase Console > Authentication > Sign-in method > Email/Password ni yoqing.');
+    }
+  };
+
+  const socialLogin = async (provider: 'google' | 'apple' | 'microsoft') => {
+    try {
+      const providerInstance = providers[provider];
       const cred = await signInWithPopup(firebaseAuth, providerInstance);
-      const name = cred.user.displayName || cred.user.email || (provider === 'google' ? 'Google User' : 'Apple User');
+      const name = cred.user.displayName || cred.user.email || `${provider} user`;
       setRole('user');
       setUserName(name);
       setPage('home');
     } catch (error) {
       console.error('Social login error:', error);
-      alert('Login bajarilmadi. Firebase Console > Authentication > Sign-in method da Google/Apple ni yoqing.');
+      alert('Login bajarilmadi. Firebase Console > Authentication > Sign-in method da providerlarni yoqing.');
     }
   };
 
@@ -340,10 +347,15 @@ function DLRentApp() {
             <h1>{t.welcome}</h1>
             <input name="login" placeholder={t.userOrMail} required />
             <input name="password" type="password" placeholder={t.pass} required />
-            <button type="submit">{t.login}</button>
+            <button type="submit">{authMode === 'register' ? t.emailRegister : t.emailLogin}</button>
+            <div className="social-row auth-mode">
+              <button type="button" className="social" onClick={() => setAuthMode('login')}>{t.emailLogin}</button>
+              <button type="button" className="social" onClick={() => setAuthMode('register')}>{t.emailRegister}</button>
+            </div>
             <div className="social-row">
               <button type="button" className="social google" onClick={() => socialLogin('google')}>{t.google}</button>
               <button type="button" className="social apple" onClick={() => socialLogin('apple')}>{t.apple}</button>
+              <button type="button" className="social microsoft" onClick={() => socialLogin('microsoft')}>{t.microsoft}</button>
             </div>
             <small>Admin: Admin234 / Admin123</small>
           </form>
@@ -529,10 +541,12 @@ const styles = `
   .panel{background:var(--surface);border:1px solid #2e3544;border-radius:16px;padding:18px}
   .center{min-height:80vh;display:grid;place-items:center}
   .login{width:min(520px,95vw);display:grid;gap:10px}
-  .social-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .social-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .auth-mode{grid-template-columns:1fr 1fr}
   .social{border-radius:12px}
   .google{background:#fff;color:#1f2937}
   .apple{background:#1f2430;color:#fff}
+  .microsoft{background:#0f62fe;color:#fff}
   .hero,.page{max-width:1300px;margin:22px auto}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .between{justify-content:space-between}
