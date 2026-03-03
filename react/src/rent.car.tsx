@@ -51,7 +51,7 @@ const txt = {
     browse: 'Mashinalarni ko‘rish', reserve: 'Band qilish', out: 'Mavjud emas', phone: 'Telefon', pickup: 'Olish sanasi',
     ret: 'Qaytarish sanasi', addCar: 'Yangi mashina qo‘shish', save: 'Saqlash', del: 'O‘chirish', lang: 'Til',
     search: 'Nomi yoki yoqilg‘i bo‘yicha qidirish', upload: 'Mashina rasmlari (10 tagacha)', imageLinks: 'Rasm URLlari (har qatorga bitta)',
-    myBookings: 'Mening bandlarim', allBookings: 'Barcha bandlar', openChat: 'Chat ochish', closeChat: 'Chat yopish', send: 'Yuborish',
+    myBookings: 'Mening bandlarim', allBookings: 'Barcha bandlar', openChat: 'Chat ochish', closeChat: 'Chat yopish', send: 'Yuborish', deleteMsg: "SMS o'chirish",
     aboutText: 'Abu Rent qulay va tez avtomobil ijarasi xizmati.',
   },
   ru: {
@@ -62,7 +62,7 @@ const txt = {
     browse: 'Смотреть авто', reserve: 'Забронировать', out: 'Нет в наличии', phone: 'Телефон', pickup: 'Дата получения',
     ret: 'Дата возврата', addCar: 'Добавить авто', save: 'Сохранить', del: 'Удалить', lang: 'Язык',
     search: 'Поиск по названию или топливу', upload: 'Изображения авто (до 10)', imageLinks: 'URL изображений (по одному в строке)',
-    myBookings: 'Мои брони', allBookings: 'Все брони', openChat: 'Открыть чат', closeChat: 'Закрыть чат', send: 'Отправить',
+    myBookings: 'Мои брони', allBookings: 'Все брони', openChat: 'Открыть чат', closeChat: 'Закрыть чат', send: 'Отправить', deleteMsg: 'Удалить SMS',
     aboutText: 'Abu Rent - удобный и быстрый сервис аренды автомобилей.',
   },
   en: {
@@ -73,7 +73,7 @@ const txt = {
     browse: 'Browse Cars', reserve: 'Reserve now', out: 'Out of stock', phone: 'Phone', pickup: 'Pickup date',
     ret: 'Return date', addCar: 'Add New Car', save: 'Save', del: 'Delete', lang: 'Language',
     search: 'Search by name or fuel', upload: 'Car images (up to 10)', imageLinks: 'Image URLs (one per line)',
-    myBookings: 'My Bookings', allBookings: 'All Bookings', openChat: 'Open chat', closeChat: 'Close chat', send: 'Send',
+    myBookings: 'My Bookings', allBookings: 'All Bookings', openChat: 'Open chat', closeChat: 'Close chat', send: 'Send', deleteMsg: 'Delete message',
     aboutText: 'Abu Rent is a fast and comfortable car rental service.',
   },
 } as const;
@@ -295,6 +295,10 @@ function DLRentApp() {
     setChatText('');
   };
 
+  const deleteMessage = (id: string) => {
+    setMessages((p) => p.filter((m) => m.id !== id));
+  };
+
   return (
     <div className="app">
       <style>{styles}</style>
@@ -428,9 +432,22 @@ function DLRentApp() {
           {activeBookingId && (
             <section className="panel chat">
               <div className="messages">
-                {activeMessages.map((m) => <p key={m.id}><b>{m.sender}</b>: {m.text} <small>{m.time}</small></p>)}
+                {activeMessages.map((m) => (
+                  <div key={m.id} className={`chat-msg ${m.sender === 'admin' ? 'from-admin' : 'from-user'}`}>
+                    <div className="chat-msg-head">
+                      <b>{m.sender}</b>
+                      <small>{m.time}</small>
+                    </div>
+                    <p>{m.text}</p>
+                    {role === 'admin' && (
+                      <button type="button" className="danger chat-del" onClick={() => deleteMessage(m.id)}>
+                        {t.deleteMsg}
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
-              <div className="row">
+              <div className="row chat-compose">
                 <input value={chatText} onChange={(e) => setChatText(e.target.value)} placeholder="Message" />
                 <button onClick={sendMessage}>{t.send}</button>
               </div>
@@ -550,7 +567,13 @@ const styles = `
   .thumb{padding:0;border-radius:10px;background:transparent;border:1px solid transparent}
   .thumb img{width:80px;height:56px;object-fit:cover;border-radius:10px;border:0}
   .thumb.active{border-color:var(--accent)}
-  .chat .messages{max-height:220px;overflow:auto;display:grid;gap:8px}
+  .chat .messages{max-height:280px;overflow:auto;display:grid;gap:10px}
+  .chat-msg{border:1px solid #2f3746;border-radius:12px;padding:10px;background:#151a22}
+  .chat-msg-head{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted)}
+  .chat-msg p{margin:8px 0 0;line-height:1.4}
+  .chat-msg.from-admin{border-color:#c8881c66}
+  .chat-del{margin-top:10px;padding:7px 12px;font-size:12px}
+  .chat-compose{margin-top:12px}
   .form-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
   .upload{display:grid;gap:8px;color:var(--muted);border:1px dashed #424b5f;padding:10px;border-radius:12px}
   .preview-grid{margin:12px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
@@ -559,7 +582,29 @@ const styles = `
   .footer-social-links{display:flex;gap:8px;flex-wrap:wrap}
   .footer-social-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:999px;padding:9px 13px;font-weight:700;color:#15100a;background:linear-gradient(135deg,#f0a215,#ffd670);transition:.2s}
   .footer-social-btn:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 12px 22px #00000038}
-  @media (max-width:900px){.detail{grid-template-columns:1fr}.social-row{grid-template-columns:1fr}.info-strip{font-size:11px;gap:8px}}
+  @media (max-width:900px){
+    .app{padding:0 10px 20px}
+    .info-strip{font-size:11px;gap:8px}
+    .top-main{flex-direction:column;align-items:stretch;padding:10px 0}
+    .brand{justify-content:center}
+    .controls{flex-direction:column;align-items:stretch}
+    .lang{justify-content:space-between}
+    .nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+    .nav-link{width:100%}
+    .panel{padding:14px}
+    .login{width:100%}
+    .social-row{grid-template-columns:1fr}
+    .hero,.page{margin:14px auto}
+    .between{flex-direction:column;align-items:stretch}
+    .grid{grid-template-columns:1fr;gap:12px}
+    .detail{grid-template-columns:1fr}
+    .card img,.detail img{height:180px}
+    .row{flex-direction:column;align-items:stretch}
+    .chat-compose button{width:100%}
+    .footer{padding:12px}
+    .footer-social-links{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+    .footer-social-btn{padding:8px 6px;font-size:12px}
+  }
 `;
 
 export default DLRentApp;
