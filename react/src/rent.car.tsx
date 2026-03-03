@@ -208,14 +208,6 @@ function DLRentApp() {
     const pass = String(f.get('password') || '').trim();
     if (!name || !pass) return;
 
-    const nextRole: Role = name === 'Admin234' && pass === 'Admin123' ? 'admin' : 'user';
-    if (nextRole === 'admin') {
-      setRole(nextRole);
-      setUserName(name);
-      setPage('admin');
-      return;
-    }
-
     if (!name.includes('@')) {
       alert('Email kiriting. Masalan: user@gmail.com');
       return;
@@ -364,7 +356,6 @@ function DLRentApp() {
               <button type="button" className="social google" onClick={() => socialLogin('google')}>{t.google}</button>
               <button type="button" className="social apple" onClick={() => socialLogin('apple')}>{t.apple}</button>
             </div>
-            <small>Admin: Admin234 / Admin123</small>
           </form>
         </main>
       )}
