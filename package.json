@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "build": "npm --prefix react run build",
+    "deploy:firebase": "npx firebase-tools deploy --only hosting"
+  },
   "dependencies": {
     "bootstrap": "^5.3.8"
   }
