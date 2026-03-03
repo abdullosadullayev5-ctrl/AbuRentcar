@@ -1,32 +1,36 @@
-    import { getApp, getApps, initializeApp } from 'firebase/app';
-    import { getAnalytics, isSupported } from 'firebase/analytics';
-    import { getAuth, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
+import { getApp, getApps, initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
 
-    const firebaseConfig = {
-    apiKey: 'AIzaSyC4zsGQq4Kej-r0GxfoWRkNqCnAImKzxS4',
-    authDomain: 'loyixa-84b39.firebaseapp.com',
-    projectId: 'loyixa-84b39',
-    storageBucket: 'loyixa-84b39.firebasestorage.app',
-    messagingSenderId: '185172472066',
-    appId: '1:185172472066:web:f1aacf073094875b97521b',
-    measurementId: 'G-BT8ZWRCEEG',
-    };
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+};
 
-    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId || !firebaseConfig.appId) {
+  throw new Error('Firebase config is missing. Set VITE_FIREBASE_* vars in react/.env.');
+}
 
-    void isSupported()
-    .then((supported) => {
-        if (supported) getAnalytics(app);
-    })
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+if (typeof window !== 'undefined') {
+  // Avoid analytics issues in non-browser environments.
+  void import('firebase/analytics')
+    .then(({ getAnalytics, isSupported }) => isSupported().then((supported) => supported && getAnalytics(app)))
     .catch(() => undefined);
+}
 
-    const providers = {
-    google: new GoogleAuthProvider(),
-    apple: new OAuthProvider('apple.com'),
-    microsoft: new OAuthProvider('microsoft.com'),
-    };
+const providers = {
+  google: new GoogleAuthProvider(),
+  apple: new OAuthProvider('apple.com'),
+  microsoft: new OAuthProvider('microsoft.com'),
+};
 
-    providers.google.setCustomParameters({ prompt: 'select_account' });
+providers.google.setCustomParameters({ prompt: 'select_account' });
 
-    export { app, auth, providers };
+export { app, auth, providers };
