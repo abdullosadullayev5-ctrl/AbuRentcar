@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import { auth as firebaseAuth, providers } from './Firebase';
 
 const abuRentLogo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0%25' stop-color='%23ffd773'/><stop offset='55%25' stop-color='%23f0a215'/><stop offset='100%25' stop-color='%237a4e00'/></linearGradient><radialGradient id='bg' cx='50%25' cy='40%25' r='65%25'><stop offset='0%25' stop-color='%232a1c06'/><stop offset='100%25' stop-color='%230d0f14'/></radialGradient></defs><rect width='220' height='220' rx='28' fill='url(%23bg)'/><circle cx='110' cy='92' r='70' fill='none' stroke='url(%23g)' stroke-width='4' opacity='0.8'/><path d='M58 132 L96 52 L126 52 L164 132 L144 132 L133 108 L88 108 L78 132 Z M96 92 H124 L110 64 Z' fill='url(%23g)'/><text x='110' y='176' fill='url(%23g)' font-size='30' font-family='Segoe UI, Arial, sans-serif' text-anchor='middle' font-weight='700'>ABU RENT</text></svg>";
@@ -140,7 +140,6 @@ function DLRentApp() {
   const [activeBookingId, setActiveBookingId] = useState('');
   const [messages, setMessages] = useState<Message[]>(readLS<Message[]>(MESSAGES_KEY, []));
   const [chatText, setChatText] = useState('');
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   const [carName, setCarName] = useState('');
   const [carPrice, setCarPrice] = useState(100);
@@ -208,9 +207,7 @@ function DLRentApp() {
     }
 
     try {
-      const credential = authMode === 'register'
-        ? await createUserWithEmailAndPassword(firebaseAuth, name, pass)
-        : await signInWithEmailAndPassword(firebaseAuth, name, pass);
+      const credential = await signInWithEmailAndPassword(firebaseAuth, name, pass);
       const displayName = credential.user.displayName || credential.user.email || name;
       setRole('user');
       setUserName(displayName);
@@ -221,7 +218,7 @@ function DLRentApp() {
     }
   };
 
-  const socialLogin = async (provider: 'google' | 'apple' | 'microsoft') => {
+  const socialLogin = async (provider: 'google' | 'apple') => {
     try {
       const providerInstance = providers[provider];
       const cred = await signInWithPopup(firebaseAuth, providerInstance);
@@ -347,15 +344,10 @@ function DLRentApp() {
             <h1>{t.welcome}</h1>
             <input name="login" placeholder={t.userOrMail} required />
             <input name="password" type="password" placeholder={t.pass} required />
-            <button type="submit">{authMode === 'register' ? t.emailRegister : t.emailLogin}</button>
-            <div className="social-row auth-mode">
-              <button type="button" className="social" onClick={() => setAuthMode('login')}>{t.emailLogin}</button>
-              <button type="button" className="social" onClick={() => setAuthMode('register')}>{t.emailRegister}</button>
-            </div>
+            <button type="submit">{t.login}</button>
             <div className="social-row">
               <button type="button" className="social google" onClick={() => socialLogin('google')}>{t.google}</button>
               <button type="button" className="social apple" onClick={() => socialLogin('apple')}>{t.apple}</button>
-              <button type="button" className="social microsoft" onClick={() => socialLogin('microsoft')}>{t.microsoft}</button>
             </div>
             <small>Admin: Admin234 / Admin123</small>
           </form>
@@ -541,12 +533,10 @@ const styles = `
   .panel{background:var(--surface);border:1px solid #2e3544;border-radius:16px;padding:18px}
   .center{min-height:80vh;display:grid;place-items:center}
   .login{width:min(520px,95vw);display:grid;gap:10px}
-  .social-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  .auth-mode{grid-template-columns:1fr 1fr}
+  .social-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .social{border-radius:12px}
   .google{background:#fff;color:#1f2937}
   .apple{background:#1f2430;color:#fff}
-  .microsoft{background:#0f62fe;color:#fff}
   .hero,.page{max-width:1300px;margin:22px auto}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .between{justify-content:space-between}

@@ -2,13 +2,13 @@ import { getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
 
 const fallbackConfig = {
-  apiKey: 'AIzaSyC4zsGQq4Kej-r0GxfoWRkNqCnAImKzxS4',
-  authDomain: 'loyixa-84b39.firebaseapp.com',
-  projectId: 'loyixa-84b39',
-  storageBucket: 'loyixa-84b39.firebasestorage.app',
-  messagingSenderId: '185172472066',
-  appId: '1:185172472066:web:f1aacf073094875b97521b',
-  measurementId: 'G-BT8ZWRCEEG',
+  apiKey: 'AIzaSyCoTvYoc-9rJingUTFxDomXgaAQ0bvnKv0',
+  authDomain: 'sayt-9e245.firebaseapp.com',
+  projectId: 'sayt-9e245',
+  storageBucket: 'sayt-9e245.firebasestorage.app',
+  messagingSenderId: '57903143719',
+  appId: '1:57903143719:web:e4ffd3911174d4e49de702',
+  measurementId: 'G-GHRT1FMTZL',
 };
 
 const firebaseConfig = {
@@ -33,7 +33,6 @@ if (typeof window !== 'undefined') {
 const providers = {
   google: new GoogleAuthProvider(),
   apple: new OAuthProvider('apple.com'),
-  microsoft: new OAuthProvider('microsoft.com'),
 };
 
 providers.google.setCustomParameters({ prompt: 'select_account' });
