@@ -208,6 +208,14 @@ function DLRentApp() {
     const pass = String(f.get('password') || '').trim();
     if (!name || !pass) return;
 
+    const nextRole: Role = name === 'Admin234' && pass === 'Admin123' ? 'admin' : 'user';
+    if (nextRole === 'admin') {
+      setRole(nextRole);
+      setUserName(name);
+      setPage('admin');
+      return;
+    }
+
     if (!name.includes('@')) {
       alert('Email kiriting. Masalan: user@gmail.com');
       return;
