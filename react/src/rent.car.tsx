@@ -364,6 +364,7 @@ function DLRentApp() {
               <button type="button" className="social google" onClick={() => socialLogin('google')}>{t.google}</button>
               <button type="button" className="social apple" onClick={() => socialLogin('apple')}>{t.apple}</button>
             </div>
+            <small>Admin: Admin234 / Admin123</small>
           </form>
         </main>
       )}
