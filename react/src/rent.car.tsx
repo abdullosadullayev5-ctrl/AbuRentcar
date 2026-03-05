@@ -356,7 +356,7 @@ function DLRentApp() {
       {page === 'login' && (
         <div className="bg-video-wrap" aria-hidden="true">
           <video className="bg-video" autoPlay muted loop playsInline>
-            <source src="/SaveVid_Net_AQM3PmbeqTlzAAdatRNqRWfq85UjvFOqRA5jleDj4FXhwSTobzNiUec.mp4" type="video/mp4" />
+            <source src="/SaveVid_Net_AQPMHbjYflrmPvVJGhiQzxHVAoqhtNRRaataSfpIUXrG2LXZp8RqQ.mp4" type="video/mp4" />
           </video>
           <div className="bg-overlay" />
         </div>
