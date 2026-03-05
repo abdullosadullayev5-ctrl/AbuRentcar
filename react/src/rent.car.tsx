@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
-import { getRedirectResult, signInWithEmailAndPassword, signInWithRedirect } from 'firebase/auth';
+import { getRedirectResult, onAuthStateChanged, signInWithEmailAndPassword, signInWithRedirect } from 'firebase/auth';
 import { auth as firebaseAuth, providers } from './Firebase';
 
 const abuRentLogo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0%25' stop-color='%23ffd773'/><stop offset='55%25' stop-color='%23f0a215'/><stop offset='100%25' stop-color='%237a4e00'/></linearGradient><radialGradient id='bg' cx='50%25' cy='40%25' r='65%25'><stop offset='0%25' stop-color='%232a1c06'/><stop offset='100%25' stop-color='%230d0f14'/></radialGradient></defs><rect width='220' height='220' rx='28' fill='url(%23bg)'/><circle cx='110' cy='92' r='70' fill='none' stroke='url(%23g)' stroke-width='4' opacity='0.8'/><path d='M58 132 L96 52 L126 52 L164 132 L144 132 L133 108 L88 108 L78 132 Z M96 92 H124 L110 64 Z' fill='url(%23g)'/><text x='110' y='176' fill='url(%23g)' font-size='30' font-family='Segoe UI, Arial, sans-serif' text-anchor='middle' font-weight='700'>ABU RENT</text></svg>";
@@ -235,6 +235,18 @@ function DLRentApp() {
       });
   }, []);
 
+  useEffect(() => {
+    // Keep UI in sync with Firebase auth state across redirects and reloads.
+    const unsub = onAuthStateChanged(firebaseAuth, (user) => {
+      if (!user) return;
+      const name = user.displayName || user.email || 'user';
+      setRole('user');
+      setUserName(name);
+      if (page === 'login') setPage('home');
+    });
+    return () => unsub();
+  }, [page]);
+
   const t = txt[lang];
   const selectedCar = useMemo(() => cars.find((c) => c.id === selectedCarId) || null, [cars, selectedCarId]);
   const visibleCars = useMemo(() => cars.filter((c) => `${c.name} ${c.fuelType}`.toLowerCase().includes(search.toLowerCase())), [cars, search]);
@@ -279,7 +291,8 @@ function DLRentApp() {
     } catch (error) {
       const code = (error as { code?: string })?.code || 'unknown';
       console.error('Social redirect login error:', error);
-      alert(`Google/Apple login bajarilmadi (${code}). Firebase > Authentication > Google yoqilganini va Authorized domains to'g'ri ekanini tekshiring.`);
+      const host = typeof window !== 'undefined' ? window.location.hostname : 'current-domain';
+      alert(`Google/Apple login bajarilmadi (${code}). Firebase > Authentication > Settings > Authorized domains ga ${host} ni qo'shing.`);
     }
   };
 
