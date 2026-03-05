@@ -95,6 +95,46 @@ const initialCars: Car[] = [
   },
 ];
 
+const serviceHighlights = [
+  '24/7 buyurtma qabul qilish va tezkor javob',
+  'Shahar ichida yetkazib berish va olib ketish xizmati',
+  'Kunlik, haftalik, oylik ijara paketlari',
+  'Oilaviy, biznes va premium avtomobillar tanlovi',
+  'Texnik ko‘rikdan o‘tgan xavfsiz park',
+  'Shartnoma va to‘lov bo‘yicha aniq va shaffof tizim',
+  'Qo‘llab-quvvatlash: bronlashdan topshirishgacha',
+  'Doimiy mijozlar uchun chegirma tizimi',
+];
+
+const rentalRules = [
+  'Haydovchilik guvohnomasi va shaxsni tasdiqlovchi hujjat talab qilinadi.',
+  'Mashina toza va to‘liq yoqilg‘i holatida topshirilishi kerak.',
+  'Yo‘l harakati qoidalari buzilishiga haydovchi javobgar bo‘ladi.',
+  'Mashina ijarasi muddatidan oldin uzaytirilsa oldindan xabar beriladi.',
+  'Uzoq safar va viloyatlararo yurish oldindan kelishiladi.',
+  'Kechikish holatida tarif bo‘yicha qo‘shimcha hisob-kitob qilinadi.',
+  'Favqulodda holatda call-markazga zudlik bilan murojaat qilinadi.',
+  'YTH yoki texnik nosozlikda servis ko‘rsatmasiga amal qilinadi.',
+];
+
+const faqItems = [
+  { q: 'Bron qilish uchun nima kerak?', a: 'Telefon raqam, haydovchilik guvohnomasi va ijara sanalari yetarli bo‘ladi.' },
+  { q: 'Oldindan to‘lov bormi?', a: 'Band qilish uchun paketga qarab avans to‘lovi bo‘lishi mumkin.' },
+  { q: 'Bir necha kunlik chegirma bormi?', a: 'Ha, 3+ kun, 7+ kun va 30+ kun paketlarda narx pasayadi.' },
+  { q: 'Boshqa shaharda qaytarish mumkinmi?', a: 'Maxsus xizmat sifatida oldindan kelishuv bilan tashkil qilinadi.' },
+  { q: 'Haydovchi bilan ijaraga berasizmi?', a: 'Talab bo‘lsa professional haydovchi xizmati alohida taklif qilinadi.' },
+  { q: 'Sug‘urta bormi?', a: 'Mashinalar asosiy sug‘urta qamrovida, shartlar shartnomada ko‘rsatiladi.' },
+];
+
+const roadTips = [
+  'Safardan oldin marshrut va yo‘l holatini tekshiring.',
+  'Kechki va uzoq yo‘lda dam olish intervalini rejalang.',
+  'Shinalar bosimi va yoqilg‘i darajasini nazorat qiling.',
+  'Yomg‘ir va tuman vaqtida tezlikni pasaytiring.',
+  'Telefon navigatsiya bilan birga oflayn xaritani ham saqlang.',
+  'Bolalar bilan safarda xavfsizlik kamarlarini doim tekshiring.',
+];
+
 const today = new Date().toISOString().slice(0, 10);
 const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 const rid = () => Math.random().toString(36).slice(2, 11);
@@ -329,12 +369,14 @@ function DLRentApp() {
   return (
     <div className="app">
       <style>{styles}</style>
-      <div className="bg-video-wrap" aria-hidden="true">
-        <video className="bg-video" autoPlay muted loop playsInline>
-          <source src="/bg-cinematic.mp4" type="video/mp4" />
-        </video>
-        <div className="bg-overlay" />
-      </div>
+      {page === 'login' && (
+        <div className="bg-video-wrap" aria-hidden="true">
+          <video className="bg-video" autoPlay muted loop playsInline>
+            <source src="/bg-cinematic.mp4" type="video/mp4" />
+          </video>
+          <div className="bg-overlay" />
+        </div>
+      )}
 
       <header className="topbar">
         <div className="info-strip">
@@ -377,27 +419,52 @@ function DLRentApp() {
 
       {page === 'login' && (
         <main className="center">
-          <section className="login-shell">
-            <form className="panel login" onSubmit={login}>
-              <h1>{t.welcome}</h1>
-              <input name="login" placeholder={t.userOrMail} required />
-              <input name="password" type="password" placeholder={t.pass} required />
-              <button type="submit">{t.login}</button>
-              <div className="social-row">
-                <button type="button" className="social google" onClick={() => socialLogin('google')}>{t.google}</button>
-                <button type="button" className="social apple" onClick={() => socialLogin('apple')}>{t.apple}</button>
-              </div>
-              <small>Admin: Admin234 / Admin123</small>
-            </form>
-          </section>
+          <form className="panel login" onSubmit={login}>
+            <h1>{t.welcome}</h1>
+            <input name="login" placeholder={t.userOrMail} required />
+            <input name="password" type="password" placeholder={t.pass} required />
+            <button type="submit">{t.login}</button>
+            <div className="social-row">
+              <button type="button" className="social google" onClick={() => socialLogin('google')}>{t.google}</button>
+              <button type="button" className="social apple" onClick={() => socialLogin('apple')}>{t.apple}</button>
+            </div>
+            <small>Admin: Admin234 / Admin123</small>
+          </form>
         </main>
       )}
 
       {page === 'home' && (
-        <main className="hero panel">
-          <h1>{cars[0]?.name}</h1>
-          <p>EUR {cars[0]?.pricePerDay}/day</p>
-          <button onClick={() => setPage('fleet')}>{t.browse}</button>
+        <main className="page">
+          <section className="hero panel">
+            <h1>{cars[0]?.name}</h1>
+            <p>EUR {cars[0]?.pricePerDay}/day</p>
+            <button onClick={() => setPage('fleet')}>{t.browse}</button>
+          </section>
+
+          <section className="panel info-block">
+            <h2>Abu Rent afzalliklari</h2>
+            <div className="info-grid">
+              {serviceHighlights.map((item) => (
+                <article className="info-card" key={item}>
+                  <p>{item}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="panel info-block">
+            <h2>Ijara qoidalari va tartiblar</h2>
+            <ul className="feature-list">
+              {rentalRules.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          </section>
+
+          <section className="panel info-block">
+            <h2>Yo‘lga chiqishdan oldin tavsiyalar</h2>
+            <ul className="feature-list">
+              {roadTips.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          </section>
         </main>
       )}
 
@@ -495,10 +562,15 @@ function DLRentApp() {
         <main className="page panel">
           <h2>{t.contacts}</h2>
           <p>Telefon: +998 99 910 03 00, +998 95 420 03 00</p>
+          <p>Qo‘shimcha aloqa: +998 97 309 42 99</p>
           <p>Email: info@dlrent.uz</p>
           <p>24/7 xizmat ko'rsatamiz, kechasi ham buyurtma qabul qilinadi.</p>
           <p>Buxoro: Farovon MFY (Lubot yaqinida)</p>
           <p>Toshkent: Mirabad tumani, Sayhun ko'chasi 170A</p>
+          <p>Samarqand: Registon yaqinida yetkazib berish nuqtasi</p>
+          <p>Farg‘ona vodiysi: oldindan bron orqali yuborish xizmati</p>
+          <p>Korxona mijozlari uchun maxsus shartnoma asosida flot xizmatlari mavjud.</p>
+          <p>Telegram, Instagram va telefon orqali bir xil narx siyosati qo‘llanadi.</p>
         </main>
       )}
       {page === 'about' && (
@@ -507,6 +579,21 @@ function DLRentApp() {
           <p>{t.aboutText}</p>
           <p>Bizning xizmat rent car ehtiyojlariga mos: kunlik, haftalik va uzoq muddatli ijara.</p>
           <p>Shartnomalar shaffof, narxlar oldindan aniq ko'rsatiladi.</p>
+          <p>Har bir avtomobil ichki va tashqi tozalashdan o‘tkazilib mijozga topshiriladi.</p>
+          <p>Mijoz tajribasini yaxshilash uchun bronlash, tasdiqlash va topshirish jarayonlari standartlashtirilgan.</p>
+          <p>Talab yuqori mavsumda ham navbatni kamaytirish uchun oldindan bron tizimi ishlatiladi.</p>
+          <p>Uzoq muddatli ijaralarda servis va texnik xizmat rejalari alohida boshqariladi.</p>
+          <p>Biznes segmenti uchun shofyor bilan xizmat, aeroport transfer va korporativ tariflar mavjud.</p>
+          <p>Xavfsizlik uchun mashinalarda davriy texnik diagnostika va yo‘lga chiqishdan oldingi tekshiruvlar qilinadi.</p>
+          <h3>Ko‘p so‘raladigan savollar</h3>
+          <div className="info-grid">
+            {faqItems.map((item) => (
+              <article className="info-card" key={item.q}>
+                <h4>{item.q}</h4>
+                <p>{item.a}</p>
+              </article>
+            ))}
+          </div>
         </main>
       )}
 
@@ -544,7 +631,20 @@ function DLRentApp() {
 
       {page !== 'login' && (
         <footer className="footer">
-          <p>Abu Rent</p>
+          <div className="footer-brand">
+            <p>Abu Rent</p>
+            <a className="footer-call" href="tel:+998973094299">
+              +998 97 309 42 99
+            </a>
+          </div>
+          <div className="footer-map">
+            <iframe
+              title="Abu Rent manzil"
+              src="https://maps.google.com/maps?q=Buxoro%20Farovon%20MFY%20Lubot&t=&z=14&ie=UTF8&iwloc=&output=embed"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
           <div className="footer-social-links">
             <a className="footer-social-btn" href="https://www.instagram.com/23_0w0/" target="_blank" rel="noreferrer">
               Instagram
@@ -601,13 +701,18 @@ const styles = `
   input,textarea,select{width:100%;background:var(--input);color:var(--text);border:1px solid var(--inputLine);border-radius:12px;padding:11px 12px}
   .panel{background:color-mix(in oklab,var(--surface) 88%,transparent);border:1px solid color-mix(in oklab,var(--line) 60%,#ffffff);border-radius:18px;padding:18px;backdrop-filter:blur(8px)}
   .center{min-height:80vh;display:grid;place-items:center}
-  .login-shell{position:relative;width:min(680px,96vw);min-height:520px;border-radius:24px;overflow:hidden;border:1px solid #ffffff33;box-shadow:0 28px 50px #00000066;display:grid;place-items:center;background:linear-gradient(180deg,#0b1017c9,#111926e3)}
   .login{width:min(520px,95vw);display:grid;gap:10px}
   .social-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .social{border-radius:12px}
   .google{background:#fff;color:#1f2937}
   .apple{background:#1f2430;color:#fff}
   .hero,.page{max-width:1300px;margin:22px auto}
+  .info-block{margin-top:14px}
+  .info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .info-card{border:1px solid color-mix(in oklab,var(--line) 70%,#000);background:color-mix(in oklab,var(--surface) 92%,#000);border-radius:14px;padding:12px}
+  .info-card h4{margin:0 0 8px}
+  .info-card p{margin:0;line-height:1.45}
+  .feature-list{margin:0;padding-left:20px;display:grid;gap:8px;line-height:1.5}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .between{justify-content:space-between}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:14px}
@@ -632,6 +737,11 @@ const styles = `
   .preview-grid{margin:12px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
   .preview{height:80px}
   .footer{max-width:1300px;margin:14px auto 0;border:1px solid #ffffff22;background:color-mix(in oklab,var(--surface) 88%,transparent);border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;backdrop-filter:blur(8px)}
+  .footer-brand{display:grid;gap:6px}
+  .footer-call{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:999px;padding:9px 14px;font-weight:700;color:#15100a;background:linear-gradient(135deg,#ffd670,#f0a215);transition:.2s}
+  .footer-call:hover{transform:translateY(-2px);box-shadow:0 12px 22px #00000038}
+  .footer-map{flex:1 1 280px;min-width:260px;max-width:460px;border-radius:12px;overflow:hidden;border:1px solid #ffffff2e}
+  .footer-map iframe{display:block;width:100%;height:120px;border:0}
   .footer-social-links{display:flex;gap:8px;flex-wrap:wrap}
   .footer-social-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:999px;padding:9px 13px;font-weight:700;color:#15100a;background:linear-gradient(135deg,#f0a215,#ffd670);transition:.2s}
   .footer-social-btn:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 12px 22px #00000038}
@@ -646,9 +756,9 @@ const styles = `
     .nav-link{width:100%}
     .panel{padding:14px}
     .login{width:100%}
-    .login-shell{min-height:540px;border-radius:16px}
     .social-row{grid-template-columns:1fr}
     .hero,.page{margin:14px auto}
+    .info-grid{grid-template-columns:1fr}
     .between{flex-direction:column;align-items:stretch}
     .grid{grid-template-columns:1fr;gap:12px}
     .detail{grid-template-columns:1fr}
@@ -656,6 +766,8 @@ const styles = `
     .row{flex-direction:column;align-items:stretch}
     .chat-compose button{width:100%}
     .footer{padding:12px}
+    .footer-map{max-width:100%}
+    .footer-map iframe{height:140px}
     .footer-social-links{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
     .footer-social-btn{padding:8px 6px;font-size:12px}
   }
