@@ -239,7 +239,8 @@ function DLRentApp() {
       await signInWithRedirect(firebaseAuth, providerInstance);
     } catch (error) {
       console.error('Social login error:', error);
-      alert('Login bajarilmadi. Firebase Console > Authentication > Sign-in method da providerlarni yoqing.');
+      const code = (error as { code?: string })?.code || 'unknown';
+      alert(`Google/Apple login bajarilmadi (${code}). Firebase > Authentication > Google yoqilganini va Authorized domains to'g'ri ekanini tekshiring.`);
     }
   };
 
