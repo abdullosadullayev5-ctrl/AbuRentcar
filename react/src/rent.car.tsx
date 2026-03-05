@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
-import { getRedirectResult, onAuthStateChanged, signInWithEmailAndPassword, signInWithRedirect } from 'firebase/auth';
+import { getRedirectResult, onAuthStateChanged, signInWithEmailAndPassword, signInWithRedirect, signOut } from 'firebase/auth';
 import { auth as firebaseAuth, providers } from './Firebase';
 
 const abuRentLogo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0%25' stop-color='%23ffd773'/><stop offset='55%25' stop-color='%23f0a215'/><stop offset='100%25' stop-color='%237a4e00'/></linearGradient><radialGradient id='bg' cx='50%25' cy='40%25' r='65%25'><stop offset='0%25' stop-color='%232a1c06'/><stop offset='100%25' stop-color='%230d0f14'/></radialGradient></defs><rect width='220' height='220' rx='28' fill='url(%23bg)'/><circle cx='110' cy='92' r='70' fill='none' stroke='url(%23g)' stroke-width='4' opacity='0.8'/><path d='M58 132 L96 52 L126 52 L164 132 L144 132 L133 108 L88 108 L78 132 Z M96 92 H124 L110 64 Z' fill='url(%23g)'/><text x='110' y='176' fill='url(%23g)' font-size='30' font-family='Segoe UI, Arial, sans-serif' text-anchor='middle' font-weight='700'>ABU RENT</text></svg>";
@@ -296,7 +296,12 @@ function DLRentApp() {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await signOut(firebaseAuth);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
     setRole('');
     setUserName('');
     setPage('login');
