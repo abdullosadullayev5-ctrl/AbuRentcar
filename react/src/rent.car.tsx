@@ -661,15 +661,15 @@ const styles = `
   *{box-sizing:border-box}
   body{margin:0;background:radial-gradient(circle at top,var(--page-grad-a) 0,var(--page-grad-b) 65%);color:var(--text);font-family:Outfit,Segoe UI,Tahoma,sans-serif;transition:background .35s ease,color .25s ease}
   .app{padding:0 16px 24px;position:relative;isolation:isolate}
-  .bg-video-wrap{position:fixed;inset:0;z-index:-2;overflow:hidden}
+  .bg-video-wrap{position:fixed;inset:12px;z-index:-2;overflow:hidden;border-radius:18px}
   .bg-video{width:100%;height:100%;object-fit:cover;filter:saturate(1.08) contrast(1.06) brightness(.72)}
   .bg-overlay{position:absolute;inset:0;background:
     radial-gradient(circle at 20% 12%, #f0a2153b 0%, transparent 42%),
     radial-gradient(circle at 83% 78%, #00c2ff26 0%, transparent 36%),
     linear-gradient(180deg,#0b1019b5,#090d14e3)}
   .topbar{position:sticky;top:0;background:var(--top);backdrop-filter:blur(12px);border-bottom:1px solid #2b3340;z-index:10}
-  .info-strip{max-width:1300px;margin:0 auto;padding:8px 0;display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
-  .top-main{max-width:1300px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0}
+  .info-strip{width:100%;margin:0;padding:8px 16px;display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+  .top-main{width:100%;margin:0;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px}
   .brand{display:flex;align-items:center;gap:10px;background:transparent;color:var(--accent);border:0;font-size:1.1rem;font-weight:800}
   .brand img{width:44px;height:44px;border-radius:10px}
   .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
@@ -731,7 +731,8 @@ const styles = `
   .footer-social-btn:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 12px 22px #00000038}
   @media (max-width:900px){
     .app{padding:0 10px 20px}
-    .info-strip{font-size:11px;gap:8px}
+    .info-strip{font-size:11px;gap:8px;padding:8px 10px}
+    .bg-video-wrap{inset:8px;border-radius:12px}
     .top-main{flex-direction:column;align-items:stretch;padding:10px 0}
     .brand{justify-content:center}
     .controls{flex-direction:column;align-items:stretch}
