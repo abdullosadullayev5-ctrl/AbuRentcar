@@ -313,12 +313,14 @@ function DLRentApp() {
   return (
     <div className="app">
       <style>{styles}</style>
-      <div className="bg-video-wrap" aria-hidden="true">
-        <video className="bg-video" autoPlay muted loop playsInline>
-          <source src="/bg-cinematic.mp4" type="video/mp4" />
-        </video>
-        <div className="bg-overlay" />
-      </div>
+      {page === 'login' && (
+        <div className="bg-video-wrap" aria-hidden="true">
+          <video className="bg-video" autoPlay muted loop playsInline>
+            <source src="/bg-cinematic.mp4" type="video/mp4" />
+          </video>
+          <div className="bg-overlay" />
+        </div>
+      )}
 
       <header className="topbar">
         <div className="info-strip">
@@ -546,17 +548,29 @@ function DLRentApp() {
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
-  :root { --bg:#101216; --surface:#1b1f24; --line:#313743; --text:#f5f7fb; --muted:#9aa3b2; --accent:#f0a215; --input:#222835; --inputLine:#394255; --top:#101216e6; }
-  [data-theme="light"] { --bg:#f3f6fb; --surface:#ffffff; --line:#d5deea; --text:#132033; --muted:#5f6f86; --accent:#d88c12; --input:#ffffff; --inputLine:#c8d4e2; --top:#ffffffea; }
+  :root {
+    --bg:#0b0f14; --surface:#161b23; --line:#2c3442; --text:#f5f7fb; --muted:#9aa3b2;
+    --accent:#f0a215; --input:#1f2632; --inputLine:#394255; --top:#0d121ae6;
+    --page-grad-a:#1a2436; --page-grad-b:#0b0f14;
+    --video-filter:saturate(1.08) contrast(1.08) brightness(0.78);
+    --overlay-r1:#f0a21533; --overlay-r2:#00b4d822; --overlay-solid:#090d13ea;
+  }
+  [data-theme="light"] {
+    --bg:#eef4ff; --surface:#ffffff; --line:#cfd8e6; --text:#132033; --muted:#55657d;
+    --accent:#d88c12; --input:#ffffff; --inputLine:#c8d4e2; --top:#ffffffd9;
+    --page-grad-a:#d7e7ff; --page-grad-b:#f8fbff;
+    --video-filter:saturate(1.08) contrast(1.02) brightness(1.08);
+    --overlay-r1:#ffcf7052; --overlay-r2:#86c5ff4a; --overlay-solid:#f5f9ffcc;
+  }
   *{box-sizing:border-box}
-  body{margin:0;background:radial-gradient(circle at top,color-mix(in oklab,var(--accent) 16%,var(--bg)) 0,var(--bg) 60%);color:var(--text);font-family:Outfit,Segoe UI,Tahoma,sans-serif;transition:background .25s ease,color .2s ease}
+  body{margin:0;background:radial-gradient(circle at top,var(--page-grad-a) 0,var(--page-grad-b) 65%);color:var(--text);font-family:Outfit,Segoe UI,Tahoma,sans-serif;transition:background .35s ease,color .25s ease}
   .app{padding:0 16px 24px;position:relative;isolation:isolate}
   .bg-video-wrap{position:fixed;inset:0;z-index:-2;overflow:hidden}
-  .bg-video{width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.06)}
+  .bg-video{width:100%;height:100%;object-fit:cover;filter:var(--video-filter)}
   .bg-overlay{position:absolute;inset:0;background:
-    radial-gradient(circle at 20% 15%, #f0a21533 0%, transparent 40%),
-    radial-gradient(circle at 85% 80%, #4cc9f022 0%, transparent 35%),
-    linear-gradient(180deg, #0c1017cc 0%, #0a0e14f2 100%)}
+    radial-gradient(circle at 18% 12%, var(--overlay-r1) 0%, transparent 42%),
+    radial-gradient(circle at 84% 80%, var(--overlay-r2) 0%, transparent 38%),
+    linear-gradient(180deg, color-mix(in oklab,var(--overlay-solid) 82%,transparent) 0%, var(--overlay-solid) 100%)}
   .topbar{position:sticky;top:0;background:var(--top);backdrop-filter:blur(12px);border-bottom:1px solid #2b3340;z-index:10}
   .info-strip{max-width:1300px;margin:0 auto;padding:8px 0;display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
   .top-main{max-width:1300px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0}
@@ -573,7 +587,7 @@ const styles = `
   button:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 14px 28px #00000045}
   .danger{background:linear-gradient(135deg,#c4274e,#f05252);color:#fff}
   input,textarea,select{width:100%;background:var(--input);color:var(--text);border:1px solid var(--inputLine);border-radius:12px;padding:11px 12px}
-  .panel{background:color-mix(in oklab,var(--surface) 88%,transparent);border:1px solid #ffffff22;border-radius:18px;padding:18px;backdrop-filter:blur(8px)}
+  .panel{background:color-mix(in oklab,var(--surface) 88%,transparent);border:1px solid color-mix(in oklab,var(--line) 60%,#ffffff);border-radius:18px;padding:18px;backdrop-filter:blur(8px)}
   .center{min-height:80vh;display:grid;place-items:center}
   .login{width:min(520px,95vw);display:grid;gap:10px}
   .social-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -594,14 +608,14 @@ const styles = `
   .thumb img{width:80px;height:56px;object-fit:cover;border-radius:10px;border:0}
   .thumb.active{border-color:var(--accent)}
   .chat .messages{max-height:280px;overflow:auto;display:grid;gap:10px}
-  .chat-msg{border:1px solid #2f3746;border-radius:12px;padding:10px;background:#151a22}
+  .chat-msg{border:1px solid color-mix(in oklab,var(--line) 80%,#000);border-radius:12px;padding:10px;background:color-mix(in oklab,var(--surface) 90%,#000)}
   .chat-msg-head{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted)}
   .chat-msg p{margin:8px 0 0;line-height:1.4}
   .chat-msg.from-admin{border-color:#c8881c66}
   .chat-del{margin-top:10px;padding:7px 12px;font-size:12px}
   .chat-compose{margin-top:12px}
   .form-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
-  .upload{display:grid;gap:8px;color:var(--muted);border:1px dashed #424b5f;padding:10px;border-radius:12px}
+  .upload{display:grid;gap:8px;color:var(--muted);border:1px dashed color-mix(in oklab,var(--line) 85%,#000);padding:10px;border-radius:12px}
   .preview-grid{margin:12px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
   .preview{height:80px}
   .footer{max-width:1300px;margin:14px auto 0;border:1px solid #ffffff22;background:color-mix(in oklab,var(--surface) 88%,transparent);border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;backdrop-filter:blur(8px)}
