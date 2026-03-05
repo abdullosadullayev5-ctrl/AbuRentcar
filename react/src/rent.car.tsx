@@ -313,6 +313,12 @@ function DLRentApp() {
   return (
     <div className="app">
       <style>{styles}</style>
+      <div className="bg-video-wrap" aria-hidden="true">
+        <video className="bg-video" autoPlay muted loop playsInline>
+          <source src="/bg-cinematic.mp4" type="video/mp4" />
+        </video>
+        <div className="bg-overlay" />
+      </div>
 
       <header className="topbar">
         <div className="info-strip">
@@ -539,12 +545,19 @@ function DLRentApp() {
 }
 
 const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
   :root { --bg:#101216; --surface:#1b1f24; --line:#313743; --text:#f5f7fb; --muted:#9aa3b2; --accent:#f0a215; --input:#222835; --inputLine:#394255; --top:#101216e6; }
   [data-theme="light"] { --bg:#f3f6fb; --surface:#ffffff; --line:#d5deea; --text:#132033; --muted:#5f6f86; --accent:#d88c12; --input:#ffffff; --inputLine:#c8d4e2; --top:#ffffffea; }
   *{box-sizing:border-box}
-  body{margin:0;background:radial-gradient(circle at top,color-mix(in oklab,var(--accent) 16%,var(--bg)) 0,var(--bg) 60%);color:var(--text);font-family:Segoe UI,Tahoma,sans-serif;transition:background .25s ease,color .2s ease}
-  .app{padding:0 16px 24px}
-  .topbar{position:sticky;top:0;background:var(--top);backdrop-filter:blur(8px);border-bottom:1px solid #2b3340;z-index:10}
+  body{margin:0;background:radial-gradient(circle at top,color-mix(in oklab,var(--accent) 16%,var(--bg)) 0,var(--bg) 60%);color:var(--text);font-family:Outfit,Segoe UI,Tahoma,sans-serif;transition:background .25s ease,color .2s ease}
+  .app{padding:0 16px 24px;position:relative;isolation:isolate}
+  .bg-video-wrap{position:fixed;inset:0;z-index:-2;overflow:hidden}
+  .bg-video{width:100%;height:100%;object-fit:cover;filter:saturate(1.05) contrast(1.06)}
+  .bg-overlay{position:absolute;inset:0;background:
+    radial-gradient(circle at 20% 15%, #f0a21533 0%, transparent 40%),
+    radial-gradient(circle at 85% 80%, #4cc9f022 0%, transparent 35%),
+    linear-gradient(180deg, #0c1017cc 0%, #0a0e14f2 100%)}
+  .topbar{position:sticky;top:0;background:var(--top);backdrop-filter:blur(12px);border-bottom:1px solid #2b3340;z-index:10}
   .info-strip{max-width:1300px;margin:0 auto;padding:8px 0;display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
   .top-main{max-width:1300px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0}
   .brand{display:flex;align-items:center;gap:10px;background:transparent;color:var(--accent);border:0;font-size:1.1rem;font-weight:800}
@@ -552,13 +565,15 @@ const styles = `
   .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
   .lang{display:flex;gap:8px;align-items:center;color:var(--muted)}
   .nav{display:flex;gap:8px;flex-wrap:wrap}
-  .nav-link{background:transparent;border:1px solid transparent;color:var(--text);padding:9px 12px;border-radius:12px;transition:.2s}
-  .nav-link:hover{border-color:#f0a21566;color:var(--accent);transform:translateY(-1px)}
-  button{border:0;border-radius:999px;padding:10px 16px;background:linear-gradient(135deg,#f0a215,#f8c24a);font-weight:700;color:#1a1305;cursor:pointer;transition:.2s}
-  button:hover{transform:translateY(-2px) scale(1.01);box-shadow:0 14px 28px #00000045}
+  .nav-link{background:transparent;border:1px solid transparent;color:var(--text);padding:9px 12px;border-radius:12px;transition:.25s}
+  .nav-link:hover{border-color:#f0a21566;color:var(--accent);transform:translateY(-2px);background:#f0a21512}
+  button{border:0;border-radius:999px;padding:10px 16px;background:linear-gradient(135deg,#f0a215,#f8c24a);font-weight:700;color:#1a1305;cursor:pointer;transition:.25s;position:relative;overflow:hidden}
+  button::before{content:'';position:absolute;left:-120%;top:0;width:120%;height:100%;background:linear-gradient(120deg,transparent,#ffffff66,transparent);transition:transform .45s}
+  button:hover::before{transform:translateX(190%)}
+  button:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 14px 28px #00000045}
   .danger{background:linear-gradient(135deg,#c4274e,#f05252);color:#fff}
   input,textarea,select{width:100%;background:var(--input);color:var(--text);border:1px solid var(--inputLine);border-radius:12px;padding:11px 12px}
-  .panel{background:var(--surface);border:1px solid #2e3544;border-radius:16px;padding:18px}
+  .panel{background:color-mix(in oklab,var(--surface) 88%,transparent);border:1px solid #ffffff22;border-radius:18px;padding:18px;backdrop-filter:blur(8px)}
   .center{min-height:80vh;display:grid;place-items:center}
   .login{width:min(520px,95vw);display:grid;gap:10px}
   .social-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
@@ -569,8 +584,8 @@ const styles = `
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .between{justify-content:space-between}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:14px}
-  .card{background:var(--surface);border:1px solid #2e3544;border-radius:16px;padding:14px;display:grid;gap:8px;transition:.2s}
-  .card:hover{transform:translateY(-4px);border-color:#f0a21588;box-shadow:0 14px 26px #0000003b}
+  .card{background:color-mix(in oklab,var(--surface) 88%,transparent);border:1px solid #ffffff1f;border-radius:16px;padding:14px;display:grid;gap:8px;transition:.28s}
+  .card:hover{transform:translateY(-6px) scale(1.01);border-color:#f0a21588;box-shadow:0 18px 30px #00000048}
   .card img,.detail img,.preview{width:100%;height:190px;object-fit:cover;border-radius:12px;border:1px solid #323a49}
   .detail-wrap{max-width:1300px}
   .detail{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
@@ -589,7 +604,7 @@ const styles = `
   .upload{display:grid;gap:8px;color:var(--muted);border:1px dashed #424b5f;padding:10px;border-radius:12px}
   .preview-grid{margin:12px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
   .preview{height:80px}
-  .footer{max-width:1300px;margin:14px auto 0;border:1px solid #2f3744;background:var(--surface);border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .footer{max-width:1300px;margin:14px auto 0;border:1px solid #ffffff22;background:color-mix(in oklab,var(--surface) 88%,transparent);border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;backdrop-filter:blur(8px)}
   .footer-social-links{display:flex;gap:8px;flex-wrap:wrap}
   .footer-social-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:999px;padding:9px 13px;font-weight:700;color:#15100a;background:linear-gradient(135deg,#f0a215,#ffd670);transition:.2s}
   .footer-social-btn:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 12px 22px #00000038}
