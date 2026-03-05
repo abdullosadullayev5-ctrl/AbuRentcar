@@ -329,6 +329,12 @@ function DLRentApp() {
   return (
     <div className="app">
       <style>{styles}</style>
+      <div className="bg-video-wrap" aria-hidden="true">
+        <video className="bg-video" autoPlay muted loop playsInline>
+          <source src="/bg-cinematic.mp4" type="video/mp4" />
+        </video>
+        <div className="bg-overlay" />
+      </div>
 
       <header className="topbar">
         <div className="info-strip">
@@ -372,15 +378,6 @@ function DLRentApp() {
       {page === 'login' && (
         <main className="center">
           <section className="login-shell">
-            <iframe
-              className="login-video-frame"
-              src="https://www.youtube.com/embed/NfnQ8gQlOIA?autoplay=1&mute=1&controls=0&loop=1&playlist=NfnQ8gQlOIA&modestbranding=1&rel=0&playsinline=1"
-              title="Login background video"
-              allow="autoplay; encrypted-media; picture-in-picture"
-              referrerPolicy="strict-origin-when-cross-origin"
-              tabIndex={-1}
-            />
-            <div className="login-overlay" />
             <form className="panel login" onSubmit={login}>
               <h1>{t.welcome}</h1>
               <input name="login" placeholder={t.userOrMail} required />
@@ -580,6 +577,12 @@ const styles = `
   *{box-sizing:border-box}
   body{margin:0;background:radial-gradient(circle at top,var(--page-grad-a) 0,var(--page-grad-b) 65%);color:var(--text);font-family:Outfit,Segoe UI,Tahoma,sans-serif;transition:background .35s ease,color .25s ease}
   .app{padding:0 16px 24px;position:relative;isolation:isolate}
+  .bg-video-wrap{position:fixed;inset:0;z-index:-2;overflow:hidden}
+  .bg-video{width:100%;height:100%;object-fit:cover;filter:saturate(1.08) contrast(1.06) brightness(.72)}
+  .bg-overlay{position:absolute;inset:0;background:
+    radial-gradient(circle at 20% 12%, #f0a2153b 0%, transparent 42%),
+    radial-gradient(circle at 83% 78%, #00c2ff26 0%, transparent 36%),
+    linear-gradient(180deg,#0b1019b5,#090d14e3)}
   .topbar{position:sticky;top:0;background:var(--top);backdrop-filter:blur(12px);border-bottom:1px solid #2b3340;z-index:10}
   .info-strip{max-width:1300px;margin:0 auto;padding:8px 0;display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
   .top-main{max-width:1300px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0}
@@ -598,9 +601,7 @@ const styles = `
   input,textarea,select{width:100%;background:var(--input);color:var(--text);border:1px solid var(--inputLine);border-radius:12px;padding:11px 12px}
   .panel{background:color-mix(in oklab,var(--surface) 88%,transparent);border:1px solid color-mix(in oklab,var(--line) 60%,#ffffff);border-radius:18px;padding:18px;backdrop-filter:blur(8px)}
   .center{min-height:80vh;display:grid;place-items:center}
-  .login-shell{position:relative;width:min(680px,96vw);min-height:520px;border-radius:24px;overflow:hidden;border:1px solid #ffffff33;box-shadow:0 28px 50px #00000066;display:grid;place-items:center}
-  .login-video-frame{position:absolute;inset:-4%;width:108%;height:108%;border:0;pointer-events:none;filter:saturate(1.12) contrast(1.08) brightness(.75)}
-  .login-overlay{position:absolute;inset:0;background:linear-gradient(180deg,#05070cb8,#0b1119d9);backdrop-filter:blur(2px)}
+  .login-shell{position:relative;width:min(680px,96vw);min-height:520px;border-radius:24px;overflow:hidden;border:1px solid #ffffff33;box-shadow:0 28px 50px #00000066;display:grid;place-items:center;background:linear-gradient(180deg,#0b1017c9,#111926e3)}
   .login{width:min(520px,95vw);display:grid;gap:10px}
   .social-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .social{border-radius:12px}
@@ -646,7 +647,6 @@ const styles = `
     .panel{padding:14px}
     .login{width:100%}
     .login-shell{min-height:540px;border-radius:16px}
-    .login-video-frame{inset:-8%;width:116%;height:116%}
     .social-row{grid-template-columns:1fr}
     .hero,.page{margin:14px auto}
     .between{flex-direction:column;align-items:stretch}
