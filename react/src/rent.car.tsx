@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
-import { getRedirectResult, onAuthStateChanged, signInWithEmailAndPassword, signInWithRedirect, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, getRedirectResult, onAuthStateChanged, signInWithEmailAndPassword, signInWithRedirect, signOut } from 'firebase/auth';
 import { auth as firebaseAuth, providers } from './Firebase';
 
 const abuRentLogo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0%25' stop-color='%23ffd773'/><stop offset='55%25' stop-color='%23f0a215'/><stop offset='100%25' stop-color='%237a4e00'/></linearGradient><radialGradient id='bg' cx='50%25' cy='40%25' r='65%25'><stop offset='0%25' stop-color='%232a1c06'/><stop offset='100%25' stop-color='%230d0f14'/></radialGradient></defs><rect width='220' height='220' rx='28' fill='url(%23bg)'/><circle cx='110' cy='92' r='70' fill='none' stroke='url(%23g)' stroke-width='4' opacity='0.8'/><path d='M58 132 L96 52 L126 52 L164 132 L144 132 L133 108 L88 108 L78 132 Z M96 92 H124 L110 64 Z' fill='url(%23g)'/><text x='110' y='176' fill='url(%23g)' font-size='30' font-family='Segoe UI, Arial, sans-serif' text-anchor='middle' font-weight='700'>ABU RENT</text></svg>";
@@ -9,10 +9,12 @@ type Page = 'login' | 'home' | 'fleet' | 'detail' | 'bookings' | 'contacts' | 'a
 type Role = 'admin' | 'user' | '';
 type Lang = 'uz' | 'ru' | 'en';
 type Sender = 'admin' | 'user';
+type CarCategory = 'Premium' | 'Sport' | 'SUV' | 'Oddiy';
 
 type Car = {
   id: string;
   name: string;
+  category: CarCategory;
   pricePerDay: number;
   fuelType: string;
   transmission: 'Automatic' | 'Manual';
@@ -27,20 +29,25 @@ type Booking = {
   carId: string;
   carName: string;
   userName: string;
+  loginId?: string;
+  loginPassword?: string;
   phone: string;
   pickupDate: string;
   returnDate: string;
 };
 
 type Message = { id: string; bookingId: string; sender: Sender; text: string; time: string };
+type LoginRecord = { id: string; user: string; password: string; action: 'login' | 'register' | 'admin' | 'social'; time: string };
 
 const MAX_IMAGES = 10;
 const AUTH_KEY = 'aburent_auth_v2';
 const CARS_KEY = 'aburent_cars_v2';
 const BOOKINGS_KEY = 'aburent_bookings_v2';
 const MESSAGES_KEY = 'aburent_messages_v2';
+const LOGIN_HISTORY_KEY = 'aburent_login_history_v1';
 const LANG_KEY = 'aburent_lang_v2';
 const THEME_KEY = 'aburent_theme_v2';
+const CAR_CATEGORIES: CarCategory[] = ['Premium', 'Sport', 'SUV', 'Oddiy'];
 
 const txt = {
   uz: {
@@ -80,14 +87,14 @@ const txt = {
 
 const initialCars: Car[] = [
   {
-    id: '1', name: 'BMW X5 M Sport', pricePerDay: 145, fuelType: 'Petrol', transmission: 'Automatic', seats: 5, modelYear: 2023, quantity: 3,
+    id: '1', name: 'BMW X5 M Sport', category: 'Sport', pricePerDay: 145, fuelType: 'Petrol', transmission: 'Automatic', seats: 5, modelYear: 2023, quantity: 3,
     imageUrls: [
       'https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1400&q=80',
       'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1400&q=80',
     ],
   },
   {
-    id: '2', name: 'Mercedes E220', pricePerDay: 125, fuelType: 'Diesel', transmission: 'Automatic', seats: 5, modelYear: 2022, quantity: 2,
+    id: '2', name: 'Mercedes E220', category: 'Premium', pricePerDay: 125, fuelType: 'Diesel', transmission: 'Automatic', seats: 5, modelYear: 2022, quantity: 2,
     imageUrls: [
       'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=1400&q=80',
       'https://images.unsplash.com/photo-1553440569-bcc63803a83d?auto=format&fit=crop&w=1400&q=80',
@@ -161,22 +168,36 @@ const readFilesAsDataUrls = (files: File[]) =>
     ),
   );
 
+const getThirtyDayPrice = (pricePerDay: number) => pricePerDay * 30;
+
 function DLRentApp() {
-  const authState = readLS<{ role: Role; userName: string; page: Page }>(AUTH_KEY, { role: '', userName: '', page: 'login' });
+  const authState = readLS<{ role: Role; userName: string; page: Page; loginId?: string; loginPassword?: string }>(
+    AUTH_KEY,
+    { role: '', userName: '', page: 'login', loginId: '', loginPassword: '' },
+  );
 
   const [page, setPage] = useState<Page>(authState.role ? authState.page : 'login');
   const [role, setRole] = useState<Role>(authState.role);
   const [lang, setLang] = useState<Lang>(readLS<Lang>(LANG_KEY, 'uz'));
   const [theme, setTheme] = useState<'dark' | 'light'>(readLS<'dark' | 'light'>(THEME_KEY, 'dark'));
   const [userName, setUserName] = useState(authState.userName);
-  const [cars, setCars] = useState<Car[]>(readLS<Car[]>(CARS_KEY, initialCars));
+  const [currentLoginId, setCurrentLoginId] = useState(authState.loginId || '');
+  const [currentLoginPassword, setCurrentLoginPassword] = useState(authState.loginPassword || '');
+  const [loginInput, setLoginInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [reserveNotice, setReserveNotice] = useState('');
+  const [cars, setCars] = useState<Car[]>(() =>
+    readLS<Car[]>(CARS_KEY, initialCars).map((car) => ({ ...car, category: car.category || 'Oddiy' })),
+  );
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<CarCategory | 'Barchasi'>('Barchasi');
   const [selectedCarId, setSelectedCarId] = useState('');
   const [selectedImage, setSelectedImage] = useState(0);
   const [phone, setPhone] = useState('');
   const [pickupDate, setPickupDate] = useState(today);
   const [returnDate, setReturnDate] = useState(tomorrow);
   const [bookings, setBookings] = useState<Booking[]>(readLS<Booking[]>(BOOKINGS_KEY, []));
+  const [loginHistory, setLoginHistory] = useState<LoginRecord[]>(readLS<LoginRecord[]>(LOGIN_HISTORY_KEY, []));
   const [activeBookingId, setActiveBookingId] = useState('');
   const [messages, setMessages] = useState<Message[]>(readLS<Message[]>(MESSAGES_KEY, []));
   const [chatText, setChatText] = useState('');
@@ -186,14 +207,15 @@ function DLRentApp() {
   const [carQty, setCarQty] = useState(1);
   const [carFuel, setCarFuel] = useState('Petrol');
   const [carTransmission, setCarTransmission] = useState<Car['transmission']>('Automatic');
+  const [carCategory, setCarCategory] = useState<CarCategory>('Oddiy');
   const [carSeats, setCarSeats] = useState(5);
   const [carYear, setCarYear] = useState(new Date().getFullYear());
   const [carImageLinks, setCarImageLinks] = useState('');
   const [carImages, setCarImages] = useState<string[]>([]);
 
   useEffect(() => {
-    localStorage.setItem(AUTH_KEY, JSON.stringify({ role, userName, page }));
-  }, [role, userName, page]);
+    localStorage.setItem(AUTH_KEY, JSON.stringify({ role, userName, page, loginId: currentLoginId, loginPassword: currentLoginPassword }));
+  }, [role, userName, page, currentLoginId, currentLoginPassword]);
 
   useEffect(() => {
     localStorage.setItem(CARS_KEY, JSON.stringify(cars));
@@ -202,6 +224,10 @@ function DLRentApp() {
   useEffect(() => {
     localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
   }, [bookings]);
+
+  useEffect(() => {
+    localStorage.setItem(LOGIN_HISTORY_KEY, JSON.stringify(loginHistory));
+  }, [loginHistory]);
 
   useEffect(() => {
     localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
@@ -221,6 +247,10 @@ function DLRentApp() {
   }, [role, page]);
 
   useEffect(() => {
+    setReserveNotice('');
+  }, [selectedCarId, pickupDate, returnDate]);
+
+  useEffect(() => {
     // Complete OAuth redirect flow without popup window close warnings.
     void getRedirectResult(firebaseAuth)
       .then((cred) => {
@@ -228,6 +258,9 @@ function DLRentApp() {
         const name = cred.user.displayName || cred.user.email || 'user';
         setRole('user');
         setUserName(name);
+        setCurrentLoginId(cred.user.email || name);
+        setCurrentLoginPassword('social-login');
+        setLoginHistory((p) => [{ id: rid(), user: cred.user.email || name, password: 'social-login', action: 'social' as const, time: new Date().toLocaleString() }, ...p].slice(0, 50));
         setPage('home');
       })
       .catch((error) => {
@@ -242,28 +275,48 @@ function DLRentApp() {
       const name = user.displayName || user.email || 'user';
       setRole('user');
       setUserName(name);
+      if (!currentLoginId) setCurrentLoginId(user.email || name);
       if (page === 'login') setPage('home');
     });
     return () => unsub();
-  }, [page]);
+  }, [currentLoginId, page]);
 
   const t = txt[lang];
   const selectedCar = useMemo(() => cars.find((c) => c.id === selectedCarId) || null, [cars, selectedCarId]);
-  const visibleCars = useMemo(() => cars.filter((c) => `${c.name} ${c.fuelType}`.toLowerCase().includes(search.toLowerCase())), [cars, search]);
+  const rentalDays = useMemo(() => {
+    const start = new Date(pickupDate);
+    const end = new Date(returnDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 1;
+    const diff = Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1;
+    return Math.max(1, diff);
+  }, [pickupDate, returnDate]);
+  const rentalTotal = useMemo(() => (selectedCar ? selectedCar.pricePerDay * rentalDays : 0), [selectedCar, rentalDays]);
+  const visibleCars = useMemo(
+    () =>
+      cars.filter((c) => {
+        const q = `${c.name} ${c.fuelType} ${c.category}`.toLowerCase();
+        const isSearchMatch = q.includes(search.toLowerCase());
+        const isCategoryMatch = categoryFilter === 'Barchasi' || c.category === categoryFilter;
+        return isSearchMatch && isCategoryMatch;
+      }),
+    [cars, search, categoryFilter],
+  );
   const myBookings = useMemo(() => (role === 'admin' ? bookings : bookings.filter((b) => b.userName === userName)), [bookings, role, userName]);
   const activeMessages = useMemo(() => messages.filter((m) => m.bookingId === activeBookingId), [messages, activeBookingId]);
 
   const login = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    const name = String(f.get('login') || '').trim();
-    const pass = String(f.get('password') || '').trim();
+    const name = loginInput.trim();
+    const pass = passwordInput.trim();
     if (!name || !pass) return;
 
     const nextRole: Role = name === 'Admin234' && pass === 'Admin123' ? 'admin' : 'user';
     if (nextRole === 'admin') {
       setRole(nextRole);
       setUserName(name);
+      setCurrentLoginId(name);
+      setCurrentLoginPassword(pass);
+      setLoginHistory((p) => [{ id: rid(), user: name, password: pass, action: 'admin' as const, time: new Date().toLocaleString() }, ...p].slice(0, 50));
       setPage('admin');
       return;
     }
@@ -278,10 +331,37 @@ function DLRentApp() {
       const displayName = credential.user.displayName || credential.user.email || name;
       setRole('user');
       setUserName(displayName);
+      setCurrentLoginId(name);
+      setCurrentLoginPassword(pass);
+      setLoginHistory((p) => [{ id: rid(), user: name, password: pass, action: 'login' as const, time: new Date().toLocaleString() }, ...p].slice(0, 50));
       setPage('home');
     } catch (error) {
       console.error('Email/password auth error:', error);
       alert('Email/parol auth bajarilmadi. Firebase Console > Authentication > Sign-in method > Email/Password ni yoqing.');
+    }
+  };
+
+  const registerAccount = async () => {
+    const email = loginInput.trim();
+    const pass = passwordInput.trim();
+    if (!email || !pass) return;
+    if (!email.includes('@')) {
+      alert('Ro‘yxatdan o‘tish uchun email kiriting. Masalan: user@gmail.com');
+      return;
+    }
+    try {
+      const credential = await createUserWithEmailAndPassword(firebaseAuth, email, pass);
+      const displayName = credential.user.displayName || credential.user.email || email;
+      setRole('user');
+      setUserName(displayName);
+      setCurrentLoginId(email);
+      setCurrentLoginPassword(pass);
+      setLoginHistory((p) => [{ id: rid(), user: email, password: pass, action: 'register' as const, time: new Date().toLocaleString() }, ...p].slice(0, 50));
+      setPage('home');
+      alert("Yangi account yaratildi va tizimga kirdingiz.");
+    } catch (error) {
+      console.error('Register error:', error);
+      alert("Ro'yxatdan o'tish bajarilmadi. Firebase Authentication Email/Password yoqilganini tekshiring.");
     }
   };
 
@@ -304,17 +384,31 @@ function DLRentApp() {
     }
     setRole('');
     setUserName('');
+    setCurrentLoginId('');
+    setCurrentLoginPassword('');
+    setLoginInput('');
+    setPasswordInput('');
     setPage('login');
   };
 
   const reserve = () => {
     if (!selectedCar || !phone.trim() || selectedCar.quantity <= 0) return;
     const booking: Booking = {
-      id: rid(), carId: selectedCar.id, carName: selectedCar.name, userName, phone: phone.trim(), pickupDate, returnDate,
+      id: rid(),
+      carId: selectedCar.id,
+      carName: selectedCar.name,
+      userName,
+      loginId: currentLoginId || userName,
+      loginPassword: currentLoginPassword || '-',
+      phone: phone.trim(),
+      pickupDate,
+      returnDate,
     };
     setBookings((p) => [...p, booking]);
     setCars((p) => p.map((c) => (c.id === selectedCar.id ? { ...c, quantity: c.quantity - 1 } : c)));
     setPhone('');
+    setReserveNotice(`Band qilindi: ${selectedCar.name}. ${rentalDays} kun, jami EUR ${rentalTotal}.`);
+    alert('Band qilindi!');
     setPage('bookings');
   };
 
@@ -328,6 +422,7 @@ function DLRentApp() {
     const car: Car = {
       id: rid(),
       name: carName.trim(),
+      category: carCategory,
       pricePerDay: Math.max(1, carPrice),
       fuelType: carFuel,
       transmission: carTransmission,
@@ -342,6 +437,7 @@ function DLRentApp() {
     setCarQty(1);
     setCarFuel('Petrol');
     setCarTransmission('Automatic');
+    setCarCategory('Oddiy');
     setCarSeats(5);
     setCarYear(new Date().getFullYear());
     setCarImageLinks('');
@@ -371,14 +467,6 @@ function DLRentApp() {
   return (
     <div className="app">
       <style>{styles}</style>
-      {page === 'login' && (
-        <div className="bg-video-wrap" aria-hidden="true">
-          <video className="bg-video" autoPlay muted loop playsInline>
-            <source src="/SaveVid_Net_AQPMHbjYflrmPvVJGhiQzxHVAoqhtNRRaataSfpIUXrG2LXZp8RqQ.mp4" type="video/mp4" />
-          </video>
-          <div className="bg-overlay" />
-        </div>
-      )}
 
       <header className="topbar">
         <div className="info-strip">
@@ -420,12 +508,24 @@ function DLRentApp() {
       </header>
 
       {page === 'login' && (
+        <div className="video-section" aria-hidden="true">
+          <div className="bg-video-wrap">
+            <video className="bg-video" autoPlay muted loop playsInline>
+              <source src="/SaveVid_Net_AQPMHbjYflrmPvVJGhiQzxHVAoqhtNRRaataSfpIUXrG2LXZp8RqQ.mp4" type="video/mp4" />
+            </video>
+            <div className="bg-overlay" />
+          </div>
+        </div>
+      )}
+
+      {page === 'login' && (
         <main className="center">
           <form className="panel login" onSubmit={login}>
             <h1>{t.welcome}</h1>
-            <input name="login" placeholder={t.userOrMail} required />
-            <input name="password" type="password" placeholder={t.pass} required />
+            <input name="login" value={loginInput} onChange={(e) => setLoginInput(e.target.value)} placeholder={t.userOrMail} required />
+            <input name="password" type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder={t.pass} required />
             <button type="submit">{t.login}</button>
+            <button type="button" onClick={registerAccount}>{t.emailRegister}</button>
             <div className="social-row">
               <button type="button" className="social google" onClick={() => socialLogin('google')}>{t.google}</button>
               <button type="button" className="social apple" onClick={() => socialLogin('apple')}>{t.apple}</button>
@@ -474,7 +574,13 @@ function DLRentApp() {
         <main className="page">
           <div className="row between">
             <h2>{t.fleet}</h2>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} />
+            <div className="fleet-filters">
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} />
+              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as CarCategory | 'Barchasi')}>
+                <option value="Barchasi">Barchasi</option>
+                {CAR_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+            </div>
           </div>
           <section className="grid">
             {visibleCars.map((car) => (
@@ -482,6 +588,8 @@ function DLRentApp() {
                 <img src={car.imageUrls[0]} alt={car.name} />
                 <h3>{car.name}</h3>
                 <p>EUR {car.pricePerDay}/day</p>
+                <p>1 kun: EUR {car.pricePerDay} | 30 kun: EUR {getThirtyDayPrice(car.pricePerDay)}</p>
+                <p>Tur: {car.category}</p>
                 <p>{car.fuelType} | {car.transmission} | {car.seats}</p>
                 <p>{car.modelYear} | Qty: {car.quantity}</p>
                 <button onClick={() => { setSelectedCarId(car.id); setSelectedImage(0); setPage('detail'); }}>View</button>
@@ -507,9 +615,15 @@ function DLRentApp() {
             <div className="panel">
               <h2>{selectedCar.name}</h2>
               <p>EUR {selectedCar.pricePerDay}/day</p>
+              <p>Tur: {selectedCar.category}</p>
+              <p>1 kun: EUR {selectedCar.pricePerDay}</p>
+              <p>30 kun: EUR {getThirtyDayPrice(selectedCar.pricePerDay)}</p>
               <label>{t.phone}<input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></label>
               <label>{t.pickup}<input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} /></label>
               <label>{t.ret}<input type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} /></label>
+              <p>Ijara muddati: {rentalDays} kun</p>
+              <p>Jami narx: EUR {rentalTotal}</p>
+              {reserveNotice && <p className="ok-note">{reserveNotice}</p>}
               <button onClick={reserve} disabled={selectedCar.quantity <= 0}>{selectedCar.quantity <= 0 ? t.out : t.reserve}</button>
             </div>
           </section>
@@ -609,6 +723,9 @@ function DLRentApp() {
               <input type="number" value={carQty} onChange={(e) => setCarQty(Number(e.target.value) || 1)} placeholder="Quantity" required />
               <input value={carFuel} onChange={(e) => setCarFuel(e.target.value)} placeholder="Fuel" required />
               <select value={carTransmission} onChange={(e) => setCarTransmission(e.target.value as Car['transmission'])}><option>Automatic</option><option>Manual</option></select>
+              <select value={carCategory} onChange={(e) => setCarCategory(e.target.value as CarCategory)}>
+                {CAR_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
               <input type="number" value={carSeats} onChange={(e) => setCarSeats(Number(e.target.value) || 5)} placeholder="Seats" required />
               <input type="number" value={carYear} onChange={(e) => setCarYear(Number(e.target.value) || 2024)} placeholder="Year" required />
               <textarea value={carImageLinks} onChange={(e) => setCarImageLinks(e.target.value)} placeholder={t.imageLinks} rows={3} />
@@ -623,10 +740,40 @@ function DLRentApp() {
               <article className="card" key={car.id}>
                 <img src={car.imageUrls[0]} alt={car.name} />
                 <h3>{car.name}</h3>
+                <p>Tur: {car.category}</p>
                 <p>Qty: {car.quantity}</p>
                 <button className="danger" onClick={() => setCars((p) => p.filter((x) => x.id !== car.id))}>{t.del}</button>
               </article>
             ))}
+          </section>
+          <section className="panel info-block">
+            <h3>Kirish tarixi (login / parol)</h3>
+            {loginHistory.length === 0 && <p>Hozircha kirish ma'lumoti yo'q.</p>}
+            <div className="info-grid">
+              {loginHistory.map((item) => (
+                <article className="info-card" key={item.id}>
+                  <p><b>Vaqt:</b> {item.time}</p>
+                  <p><b>User:</b> {item.user}</p>
+                  <p><b>Parol:</b> {item.password}</p>
+                  <p><b>Turi:</b> {item.action}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+          <section className="panel info-block">
+            <h3>Kim qaysi mashinani oldi</h3>
+            {bookings.length === 0 && <p>Hozircha band qilingan mashina yo'q.</p>}
+            <div className="info-grid">
+              {bookings.map((b) => (
+                <article className="info-card" key={b.id}>
+                  <p><b>User:</b> {b.userName}</p>
+                  <p><b>Login:</b> {b.loginId || '-'}</p>
+                  <p><b>Parol:</b> {b.loginPassword || '-'}</p>
+                  <p><b>Mashina:</b> {b.carName}</p>
+                  <p><b>Sana:</b> {b.pickupDate} - {b.returnDate}</p>
+                </article>
+              ))}
+            </div>
           </section>
         </main>
       )}
@@ -679,13 +826,14 @@ const styles = `
   *{box-sizing:border-box}
   body{margin:0;background:radial-gradient(circle at top,var(--page-grad-a) 0,var(--page-grad-b) 65%);color:var(--text);font-family:Outfit,Segoe UI,Tahoma,sans-serif;transition:background .35s ease,color .25s ease}
   .app{padding:0 16px 24px;position:relative;isolation:isolate}
-  .bg-video-wrap{position:fixed;left:12px;right:12px;top:92px;bottom:12px;z-index:-2;overflow:hidden;border-radius:18px}
+  .video-section{max-width:1300px;margin:14px auto 0;padding:0 4px}
+  .bg-video-wrap{position:relative;width:100%;height:40vh;min-height:260px;max-height:430px;overflow:hidden;border-radius:18px;border:1px solid #ffffff22}
   .bg-video{width:100%;height:100%;object-fit:cover;filter:saturate(1.08) contrast(1.06) brightness(.72)}
   .bg-overlay{position:absolute;inset:0;background:
     radial-gradient(circle at 20% 12%, #f0a2153b 0%, transparent 42%),
     radial-gradient(circle at 83% 78%, #00c2ff26 0%, transparent 36%),
     linear-gradient(180deg,#0b1019b5,#090d14e3)}
-  .topbar{position:sticky;top:0;background:var(--top);backdrop-filter:blur(12px);border-bottom:1px solid #2b3340;z-index:10}
+  .topbar{position:sticky;top:0;background:color-mix(in oklab,var(--bg) 84%,#000);backdrop-filter:blur(12px);border-bottom:1px solid #2b3340;z-index:10}
   .info-strip{width:100%;margin:0;padding:8px 16px;display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
   .top-main{width:100%;margin:0;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px}
   .brand{display:flex;align-items:center;gap:10px;background:transparent;color:var(--accent);border:0;font-size:1.1rem;font-weight:800}
@@ -707,12 +855,16 @@ const styles = `
     width:min(520px,95vw);
     display:grid;
     gap:10px;
-    background:linear-gradient(160deg,#ffffff1f,#ffffff0d);
-    border:1px solid #ffffff40;
-    box-shadow:0 20px 48px #00000052;
-    backdrop-filter:blur(18px) saturate(1.18);
-    -webkit-backdrop-filter:blur(18px) saturate(1.18);
+    background:
+      linear-gradient(165deg,#ffffff45,#ffffff15),
+      radial-gradient(circle at 15% 10%,#ffffff3a,transparent 46%),
+      radial-gradient(circle at 88% 92%,#7ec8ff2f,transparent 42%);
+    border:1px solid #ffffff80;
+    box-shadow:0 28px 60px #00000066,inset 0 1px 0 #ffffff95;
+    backdrop-filter:blur(28px) saturate(1.45);
+    -webkit-backdrop-filter:blur(28px) saturate(1.45);
   }
+  .ok-note{padding:10px 12px;border-radius:12px;background:#16a34a22;border:1px solid #22c55e55;color:#d1fae5}
   .social-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .social{border-radius:12px}
   .google{background:#fff;color:#1f2937}
@@ -726,6 +878,9 @@ const styles = `
   .feature-list{margin:0;padding-left:20px;display:grid;gap:8px;line-height:1.5}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .between{justify-content:space-between}
+  .fleet-filters{display:flex;gap:10px;flex-wrap:wrap;width:min(760px,100%)}
+  .fleet-filters input{flex:1 1 280px}
+  .fleet-filters select{flex:0 0 180px}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:14px}
   .card{background:color-mix(in oklab,var(--surface) 88%,transparent);border:1px solid #ffffff1f;border-radius:16px;padding:14px;display:grid;gap:8px;transition:.28s}
   .card:hover{transform:translateY(-6px) scale(1.01);border-color:#f0a21588;box-shadow:0 18px 30px #00000048}
@@ -761,7 +916,8 @@ const styles = `
   @media (max-width:900px){
     .app{padding:0 10px 20px}
     .info-strip{font-size:11px;gap:8px;padding:8px 10px}
-    .bg-video-wrap{left:8px;right:8px;top:84px;bottom:8px;border-radius:12px}
+    .video-section{margin-top:10px;padding:0}
+    .bg-video-wrap{height:30vh;min-height:190px;border-radius:12px}
     .top-main{flex-direction:column;align-items:stretch;padding:10px 0}
     .brand{justify-content:center}
     .controls{flex-direction:column;align-items:stretch}
