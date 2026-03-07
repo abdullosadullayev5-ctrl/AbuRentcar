@@ -202,6 +202,40 @@ const roadTips = [
   'Telefon navigatsiya bilan birga oflayn xaritani ham saqlang.',
   'Bolalar bilan safarda xavfsizlik kamarlarini doim tekshiring.',
 ];
+const contactCards = [
+  {
+    title: 'Call Center',
+    text: '24/7 operatorlar tez javob beradi, bron va narx bo‘yicha yordam beradi.',
+    image: 'https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    title: 'Shahar bo‘ylab yetkazish',
+    text: 'Buxoro, Toshkent va Samarqand bo‘yicha mashinani manzilga olib boramiz.',
+    image: 'https://images.unsplash.com/photo-1597007030739-6d2eaaaf2f35?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    title: 'Korporativ xizmat',
+    text: 'Kompaniyalar uchun flot ijarasi, hujjatlar va hisob-kitob aniq yuritiladi.',
+    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80',
+  },
+];
+const aboutCards = [
+  {
+    title: 'Toza va tayyor park',
+    text: 'Har bir avtomobil topshirishdan oldin texnik ko‘rik va tozalashdan o‘tadi.',
+    image: 'https://images.unsplash.com/photo-1485291571150-772bcfc10da5?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    title: 'Ishonchli jarayon',
+    text: 'Bronlash, tasdiqlash va topshirish bosqichlari aniq tartibda ishlaydi.',
+    image: 'https://images.unsplash.com/photo-1556155092-490a1ba16284?auto=format&fit=crop&w=1200&q=80',
+  },
+  {
+    title: 'Mijozga yo‘naltirilgan',
+    text: 'Qisqa muddatli va uzoq muddatli paketlar ehtiyojga qarab moslashtiriladi.',
+    image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=1200&q=80',
+  },
+];
 const categoryBadgeClass = (category: CarCategory) => `badge-${category.toLowerCase()}`;
 
 const today = new Date().toISOString().slice(0, 10);
@@ -695,7 +729,28 @@ function DLRentApp() {
         <main className="page">
           <h2>{role === 'admin' ? t.allBookings : t.myBookings}</h2>
           {reserveNotice && <p className="ok-note">{reserveNotice}</p>}
+          <section className="booking-overview">
+            <article className="panel booking-stat">
+              <p className="booking-k">Jami bron</p>
+              <h3>{myBookings.length}</h3>
+            </article>
+            <article className="panel booking-stat">
+              <p className="booking-k">Faol chat</p>
+              <h3>{activeBookingId ? 1 : 0}</h3>
+            </article>
+            <article className="panel booking-stat">
+              <p className="booking-k">Oxirgi bron</p>
+              <h3>{myBookings[myBookings.length - 1]?.carName || '-'}</h3>
+            </article>
+          </section>
           <section className="grid">
+            {myBookings.length === 0 && (
+              <article className="card booking-empty">
+                <img src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=80" alt="No bookings yet" />
+                <h3>Hali bron yo‘q</h3>
+                <p>Avtoparkdan mashina tanlang va shu yerda barcha bronlaringizni boshqaring.</p>
+              </article>
+            )}
             {myBookings.map((b) => (
               <article className="card" key={b.id}>
                 <h3>{b.carName}</h3>
@@ -750,6 +805,15 @@ function DLRentApp() {
           <p>Farg‘ona vodiysi: oldindan bron orqali yuborish xizmati</p>
           <p>Korxona mijozlari uchun maxsus shartnoma asosida flot xizmatlari mavjud.</p>
           <p>Telegram, Instagram va telefon orqali bir xil narx siyosati qo‘llanadi.</p>
+          <div className="info-grid contact-grid">
+            {contactCards.map((item) => (
+              <article className="info-card" key={item.title}>
+                <img className="info-media" src={item.image} alt={item.title} />
+                <h4>{item.title}</h4>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
         </main>
       )}
       {page === 'about' && (
@@ -764,6 +828,15 @@ function DLRentApp() {
           <p>Uzoq muddatli ijaralarda servis va texnik xizmat rejalari alohida boshqariladi.</p>
           <p>Biznes segmenti uchun shofyor bilan xizmat, aeroport transfer va korporativ tariflar mavjud.</p>
           <p>Xavfsizlik uchun mashinalarda davriy texnik diagnostika va yo‘lga chiqishdan oldingi tekshiruvlar qilinadi.</p>
+          <div className="info-grid about-grid">
+            {aboutCards.map((item) => (
+              <article className="info-card" key={item.title}>
+                <img className="info-media" src={item.image} alt={item.title} />
+                <h4>{item.title}</h4>
+                <p>{item.text}</p>
+              </article>
+            ))}
+          </div>
           <h3>Ko‘p so‘raladigan savollar</h3>
           <div className="info-grid">
             {faqItems.map((item) => (
@@ -955,6 +1028,11 @@ const styles = `
   .badge-suv{background:#0c4a6ed9}
   .badge-oddiy{background:#334155d9}
   .booking-sticker{display:inline-block;width:max-content;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#16a34a25;border:1px solid #22c55e73;color:#dcfce7}
+  .booking-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0}
+  .booking-stat{display:grid;gap:4px}
+  .booking-k{margin:0;color:var(--muted);font-size:12px}
+  .booking-empty p{line-height:1.5}
+  .contact-grid,.about-grid{margin-top:16px}
   .detail-wrap{max-width:1300px}
   .detail{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
   .detail > div:first-child{display:grid;gap:10px}
@@ -996,6 +1074,7 @@ const styles = `
     .login{width:100%}
     .social-row{grid-template-columns:1fr}
     .hero,.page{margin:14px auto}
+    .booking-overview{grid-template-columns:1fr}
     .info-grid{grid-template-columns:1fr}
     .between{flex-direction:column;align-items:stretch}
     .grid{grid-template-columns:1fr;gap:12px}
