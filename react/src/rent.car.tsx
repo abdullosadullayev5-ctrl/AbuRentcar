@@ -172,6 +172,14 @@ const serviceHighlightImages = [
   'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=900&q=80',
   'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=900&q=80',
 ];
+const highlightImageByText: Record<string, string> = {
+  'Shartnoma va to‘lov bo‘yicha aniq va shaffof tizim':
+    'https://images.unsplash.com/photo-1554224154-22dec7ec8818?auto=format&fit=crop&w=1200&q=80',
+  'Oilaviy, biznes va premium avtomobillar tanlovi':
+    'https://images.unsplash.com/photo-1549921296-3a6b6fcd16d3?auto=format&fit=crop&w=1200&q=80',
+  'Shahar ichida yetkazib berish va olib ketish xizmati':
+    'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=1200&q=80',
+};
 const serviceHighlightStickers = ['24/7', 'Delivery', 'Paket', 'Choice', 'Safe', 'Clear', 'Support', 'Bonus'];
 
 const rentalRules = [
@@ -563,15 +571,6 @@ function DLRentApp() {
   return (
     <div className="app">
       <style>{styles}</style>
-      {page === 'login' && (
-        <>
-          <video className="login-bg-video" autoPlay muted loop playsInline>
-            <source src="/SaveVid_Net_AQPMHbjYflrmPvVJGhiQzxHVAoqhtNRRaataSfpIUXrG2LXZp8RqQ.mp4" type="video/mp4" />
-          </video>
-          <div className="login-bg-overlay" />
-        </>
-      )}
-
       <header className="topbar">
         <div className="info-strip">
           <span>24/7 ishlaymiz</span>
@@ -642,7 +641,11 @@ function DLRentApp() {
               {serviceHighlights.map((item, idx) => (
                 <article className="info-card" key={item}>
                   <div className="sticker">{serviceHighlightStickers[idx % serviceHighlightStickers.length]}</div>
-                  <img className="info-media" src={serviceHighlightImages[idx % serviceHighlightImages.length]} alt={item} />
+                  <img
+                    className="info-media"
+                    src={highlightImageByText[item] || serviceHighlightImages[idx % serviceHighlightImages.length]}
+                    alt={item}
+                  />
                   <p>{item}</p>
                 </article>
               ))}
@@ -962,11 +965,6 @@ const styles = `
   *{box-sizing:border-box}
   body{margin:0;background:radial-gradient(circle at top,var(--page-grad-a) 0,var(--page-grad-b) 65%);color:var(--text);font-family:Outfit,Segoe UI,Tahoma,sans-serif;transition:background .35s ease,color .25s ease}
   .app{padding:0 16px 24px;position:relative;isolation:isolate}
-  .login-bg-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;filter:saturate(1.08) contrast(1.06) brightness(.72)}
-  .login-bg-overlay{position:fixed;inset:0;z-index:-1;background:
-    radial-gradient(circle at 20% 12%, #f0a2153b 0%, transparent 42%),
-    radial-gradient(circle at 83% 78%, #00c2ff26 0%, transparent 36%),
-    linear-gradient(180deg,#0b1019b5,#090d14e3)}
   .topbar{position:sticky;top:0;background:color-mix(in oklab,var(--bg) 84%,#000);backdrop-filter:blur(12px);border-bottom:1px solid #2b3340;z-index:10}
   .info-strip{width:100%;margin:0;padding:8px 16px;display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
   .top-main{width:100%;margin:0;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px}
