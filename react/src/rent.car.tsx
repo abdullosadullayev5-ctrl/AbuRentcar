@@ -100,6 +100,55 @@ const initialCars: Car[] = [
       'https://images.unsplash.com/photo-1553440569-bcc63803a83d?auto=format&fit=crop&w=1400&q=80',
     ],
   },
+  {
+    id: '3', name: 'Toyota Land Cruiser 300', category: 'SUV', pricePerDay: 180, fuelType: 'Petrol', transmission: 'Automatic', seats: 7, modelYear: 2024, quantity: 4,
+    imageUrls: [
+      'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1626668893632-6f3a4466d22f?auto=format&fit=crop&w=1400&q=80',
+    ],
+  },
+  {
+    id: '4', name: 'Porsche 911 Carrera', category: 'Sport', pricePerDay: 290, fuelType: 'Petrol', transmission: 'Automatic', seats: 2, modelYear: 2023, quantity: 2,
+    imageUrls: [
+      'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1592198084033-aade902d1aae?auto=format&fit=crop&w=1400&q=80',
+    ],
+  },
+  {
+    id: '5', name: 'Lexus LX 600', category: 'Premium', pricePerDay: 220, fuelType: 'Petrol', transmission: 'Automatic', seats: 7, modelYear: 2024, quantity: 2,
+    imageUrls: [
+      'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1614200187524-dc4b892acf16?auto=format&fit=crop&w=1400&q=80',
+    ],
+  },
+  {
+    id: '6', name: 'Chevrolet Malibu', category: 'Oddiy', pricePerDay: 78, fuelType: 'Petrol', transmission: 'Automatic', seats: 5, modelYear: 2021, quantity: 6,
+    imageUrls: [
+      'https://images.unsplash.com/photo-1549927681-13f288c8f4b9?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=1400&q=80',
+    ],
+  },
+  {
+    id: '7', name: 'Kia K5', category: 'Oddiy', pricePerDay: 82, fuelType: 'Petrol', transmission: 'Automatic', seats: 5, modelYear: 2022, quantity: 5,
+    imageUrls: [
+      'https://images.unsplash.com/photo-1597007066704-67bf2068d5b2?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=1400&q=80',
+    ],
+  },
+  {
+    id: '8', name: 'Range Rover Sport', category: 'SUV', pricePerDay: 245, fuelType: 'Petrol', transmission: 'Automatic', seats: 5, modelYear: 2024, quantity: 3,
+    imageUrls: [
+      'https://images.unsplash.com/photo-1549924231-f129b911e442?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=1400&q=80',
+    ],
+  },
+  {
+    id: '9', name: 'Audi RS7', category: 'Sport', pricePerDay: 260, fuelType: 'Petrol', transmission: 'Automatic', seats: 5, modelYear: 2023, quantity: 2,
+    imageUrls: [
+      'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=1400&q=80',
+      'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=1400&q=80',
+    ],
+  },
 ];
 
 const serviceHighlights = [
@@ -112,6 +161,18 @@ const serviceHighlights = [
   'Qo‘llab-quvvatlash: bronlashdan topshirishgacha',
   'Doimiy mijozlar uchun chegirma tizimi',
 ];
+
+const serviceHighlightImages = [
+  'https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1549921296-3a6b6fcd16d3?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=900&q=80',
+];
+const serviceHighlightStickers = ['24/7', 'Delivery', 'Paket', 'Choice', 'Safe', 'Clear', 'Support', 'Bonus'];
 
 const rentalRules = [
   'Haydovchilik guvohnomasi va shaxsni tasdiqlovchi hujjat talab qilinadi.',
@@ -141,6 +202,7 @@ const roadTips = [
   'Telefon navigatsiya bilan birga oflayn xaritani ham saqlang.',
   'Bolalar bilan safarda xavfsizlik kamarlarini doim tekshiring.',
 ];
+const categoryBadgeClass = (category: CarCategory) => `badge-${category.toLowerCase()}`;
 
 const today = new Date().toISOString().slice(0, 10);
 const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
@@ -546,8 +608,10 @@ function DLRentApp() {
           <section className="panel info-block">
             <h2>Abu Rent afzalliklari</h2>
             <div className="info-grid">
-              {serviceHighlights.map((item) => (
+              {serviceHighlights.map((item, idx) => (
                 <article className="info-card" key={item}>
+                  <div className="sticker">{serviceHighlightStickers[idx % serviceHighlightStickers.length]}</div>
+                  <img className="info-media" src={serviceHighlightImages[idx % serviceHighlightImages.length]} alt={item} />
                   <p>{item}</p>
                 </article>
               ))}
@@ -585,11 +649,11 @@ function DLRentApp() {
           <section className="grid">
             {visibleCars.map((car) => (
               <article className="card" key={car.id}>
+                <span className={`cat-badge ${categoryBadgeClass(car.category)}`}>{car.category}</span>
                 <img src={car.imageUrls[0]} alt={car.name} />
                 <h3>{car.name}</h3>
                 <p>EUR {car.pricePerDay}/day</p>
                 <p>1 kun: EUR {car.pricePerDay} | 30 kun: EUR {getThirtyDayPrice(car.pricePerDay)}</p>
-                <p>Tur: {car.category}</p>
                 <p>{car.fuelType} | {car.transmission} | {car.seats}</p>
                 <p>{car.modelYear} | Qty: {car.quantity}</p>
                 <button onClick={() => { setSelectedCarId(car.id); setSelectedImage(0); setPage('detail'); }}>View</button>
@@ -633,10 +697,12 @@ function DLRentApp() {
       {page === 'bookings' && (
         <main className="page">
           <h2>{role === 'admin' ? t.allBookings : t.myBookings}</h2>
+          {reserveNotice && <p className="ok-note">{reserveNotice}</p>}
           <section className="grid">
             {myBookings.map((b) => (
               <article className="card" key={b.id}>
                 <h3>{b.carName}</h3>
+                <span className="booking-sticker">Band qilindi</span>
                 <p>{b.userName}</p>
                 <p>{b.phone}</p>
                 <p>{b.pickupDate} - {b.returnDate}</p>
@@ -738,9 +804,9 @@ function DLRentApp() {
           <section className="grid">
             {cars.map((car) => (
               <article className="card" key={car.id}>
+                <span className={`cat-badge ${categoryBadgeClass(car.category)}`}>{car.category}</span>
                 <img src={car.imageUrls[0]} alt={car.name} />
                 <h3>{car.name}</h3>
-                <p>Tur: {car.category}</p>
                 <p>Qty: {car.quantity}</p>
                 <button className="danger" onClick={() => setCars((p) => p.filter((x) => x.id !== car.id))}>{t.del}</button>
               </article>
@@ -872,7 +938,10 @@ const styles = `
   .hero,.page{max-width:1300px;margin:22px auto}
   .info-block{margin-top:14px}
   .info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
-  .info-card{border:1px solid color-mix(in oklab,var(--line) 70%,#000);background:color-mix(in oklab,var(--surface) 92%,#000);border-radius:14px;padding:12px}
+  .info-card{position:relative;border:1px solid color-mix(in oklab,var(--line) 70%,#000);background:color-mix(in oklab,var(--surface) 92%,#000);border-radius:14px;padding:12px;overflow:hidden;transition:transform .24s,border-color .24s,box-shadow .24s}
+  .info-card:hover{transform:translateY(-4px);border-color:#f0a21577;box-shadow:0 12px 20px #0000003f}
+  .info-media{width:100%;height:104px;object-fit:cover;border-radius:10px;border:1px solid #ffffff1d;margin-bottom:10px}
+  .sticker{position:absolute;top:10px;right:10px;background:#0f172acc;color:#f8fafc;border:1px solid #ffffff40;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;backdrop-filter:blur(4px)}
   .info-card h4{margin:0 0 8px}
   .info-card p{margin:0;line-height:1.45}
   .feature-list{margin:0;padding-left:20px;display:grid;gap:8px;line-height:1.5}
@@ -882,9 +951,15 @@ const styles = `
   .fleet-filters input{flex:1 1 280px}
   .fleet-filters select{flex:0 0 180px}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:14px}
-  .card{background:color-mix(in oklab,var(--surface) 88%,transparent);border:1px solid #ffffff1f;border-radius:16px;padding:14px;display:grid;gap:8px;transition:.28s}
+  .card{position:relative;background:color-mix(in oklab,var(--surface) 88%,transparent);border:1px solid #ffffff1f;border-radius:16px;padding:14px;display:grid;gap:8px;transition:.28s}
   .card:hover{transform:translateY(-6px) scale(1.01);border-color:#f0a21588;box-shadow:0 18px 30px #00000048}
   .card img,.preview{width:100%;height:230px;object-fit:cover;border-radius:12px;border:1px solid #323a49}
+  .cat-badge{position:absolute;top:20px;left:20px;z-index:2;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800;border:1px solid #ffffff70;background:#0f172acc;color:#fff;backdrop-filter:blur(5px)}
+  .badge-premium{background:#3f2b00d9}
+  .badge-sport{background:#7f1d1dd9}
+  .badge-suv{background:#0c4a6ed9}
+  .badge-oddiy{background:#334155d9}
+  .booking-sticker{display:inline-block;width:max-content;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#16a34a25;border:1px solid #22c55e73;color:#dcfce7}
   .detail-wrap{max-width:1300px}
   .detail{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
   .detail > div:first-child{display:grid;gap:10px}
