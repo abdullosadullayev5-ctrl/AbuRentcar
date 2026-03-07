@@ -529,6 +529,14 @@ function DLRentApp() {
   return (
     <div className="app">
       <style>{styles}</style>
+      {page === 'login' && (
+        <>
+          <video className="login-bg-video" autoPlay muted loop playsInline>
+            <source src="/SaveVid_Net_AQPMHbjYflrmPvVJGhiQzxHVAoqhtNRRaataSfpIUXrG2LXZp8RqQ.mp4" type="video/mp4" />
+          </video>
+          <div className="login-bg-overlay" />
+        </>
+      )}
 
       <header className="topbar">
         <div className="info-strip">
@@ -568,17 +576,6 @@ function DLRentApp() {
           </div>
         </div>
       </header>
-
-      {page === 'login' && (
-        <div className="video-section" aria-hidden="true">
-          <div className="bg-video-wrap">
-            <video className="bg-video" autoPlay muted loop playsInline>
-              <source src="/SaveVid_Net_AQPMHbjYflrmPvVJGhiQzxHVAoqhtNRRaataSfpIUXrG2LXZp8RqQ.mp4" type="video/mp4" />
-            </video>
-            <div className="bg-overlay" />
-          </div>
-        </div>
-      )}
 
       {page === 'login' && (
         <main className="center">
@@ -892,10 +889,8 @@ const styles = `
   *{box-sizing:border-box}
   body{margin:0;background:radial-gradient(circle at top,var(--page-grad-a) 0,var(--page-grad-b) 65%);color:var(--text);font-family:Outfit,Segoe UI,Tahoma,sans-serif;transition:background .35s ease,color .25s ease}
   .app{padding:0 16px 24px;position:relative;isolation:isolate}
-  .video-section{max-width:1300px;margin:14px auto 0;padding:0 4px}
-  .bg-video-wrap{position:relative;width:100%;height:40vh;min-height:260px;max-height:430px;overflow:hidden;border-radius:18px;border:1px solid #ffffff22}
-  .bg-video{width:100%;height:100%;object-fit:cover;filter:saturate(1.08) contrast(1.06) brightness(.72)}
-  .bg-overlay{position:absolute;inset:0;background:
+  .login-bg-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;filter:saturate(1.08) contrast(1.06) brightness(.72)}
+  .login-bg-overlay{position:fixed;inset:0;z-index:-1;background:
     radial-gradient(circle at 20% 12%, #f0a2153b 0%, transparent 42%),
     radial-gradient(circle at 83% 78%, #00c2ff26 0%, transparent 36%),
     linear-gradient(180deg,#0b1019b5,#090d14e3)}
@@ -991,8 +986,6 @@ const styles = `
   @media (max-width:900px){
     .app{padding:0 10px 20px}
     .info-strip{font-size:11px;gap:8px;padding:8px 10px}
-    .video-section{margin-top:10px;padding:0}
-    .bg-video-wrap{height:30vh;min-height:190px;border-radius:12px}
     .top-main{flex-direction:column;align-items:stretch;padding:10px 0}
     .brand{justify-content:center}
     .controls{flex-direction:column;align-items:stretch}
