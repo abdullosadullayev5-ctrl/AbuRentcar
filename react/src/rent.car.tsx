@@ -273,6 +273,14 @@ const readFilesAsDataUrls = (files: File[]) =>
   );
 
 const getThirtyDayPrice = (pricePerDay: number) => pricePerDay * 30;
+const resolveImageUrl = (src: string) => {
+  if (!src || src.startsWith('data:')) return src;
+  if (src.includes('images.unsplash.com')) {
+    const seed = encodeURIComponent(src.split('/photo-')[1]?.split('?')[0] || 'aburent');
+    return `https://picsum.photos/seed/${seed}/1200/800`;
+  }
+  return src;
+};
 
 function DLRentApp() {
   const authState = readLS<{ role: Role; userName: string; page: Page; loginId?: string; loginPassword?: string }>(
@@ -521,7 +529,7 @@ function DLRentApp() {
     if (!carName.trim()) return;
     const urlLines = carImageLinks.split(/\r?\n|,|;/).map((s) => s.trim()).filter(Boolean);
     const allImages = [...carImages, ...urlLines].slice(0, MAX_IMAGES);
-    if (allImages.length === 0) allImages.push('https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1400&q=80');
+    if (allImages.length === 0) allImages.push('https://picsum.photos/seed/aburent-default/1200/800');
 
     const car: Car = {
       id: rid(),
@@ -643,7 +651,7 @@ function DLRentApp() {
                   <div className="sticker">{serviceHighlightStickers[idx % serviceHighlightStickers.length]}</div>
                   <img
                     className="info-media"
-                    src={highlightImageByText[item] || serviceHighlightImages[idx % serviceHighlightImages.length]}
+                    src={resolveImageUrl(highlightImageByText[item] || serviceHighlightImages[idx % serviceHighlightImages.length])}
                     alt={item}
                   />
                   <p>{item}</p>
@@ -684,7 +692,7 @@ function DLRentApp() {
             {visibleCars.map((car) => (
               <article className="card" key={car.id}>
                 <span className={`cat-badge ${categoryBadgeClass(car.category)}`}>{car.category}</span>
-                <img src={car.imageUrls[0]} alt={car.name} />
+                <img src={resolveImageUrl(car.imageUrls[0])} alt={car.name} />
                 <h3>{car.name}</h3>
                 <p>EUR {car.pricePerDay}/day</p>
                 <p>1 kun: EUR {car.pricePerDay} | 30 kun: EUR {getThirtyDayPrice(car.pricePerDay)}</p>
@@ -701,11 +709,11 @@ function DLRentApp() {
         <main className="page detail-wrap">
           <section className="detail">
             <div>
-              <img src={selectedCar.imageUrls[selectedImage]} alt={selectedCar.name} />
+              <img src={resolveImageUrl(selectedCar.imageUrls[selectedImage])} alt={selectedCar.name} />
               <div className="thumbs">
                 {selectedCar.imageUrls.map((img, i) => (
                   <button key={`${selectedCar.id}-${i}`} className={`thumb ${selectedImage === i ? 'active' : ''}`} onClick={() => setSelectedImage(i)}>
-                    <img src={img} alt={`${selectedCar.name} ${i + 1}`} />
+                    <img src={resolveImageUrl(img)} alt={`${selectedCar.name} ${i + 1}`} />
                   </button>
                 ))}
               </div>
@@ -749,7 +757,7 @@ function DLRentApp() {
           <section className="grid">
             {myBookings.length === 0 && (
               <article className="card booking-empty">
-                <img src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=80" alt="No bookings yet" />
+                <img src="https://picsum.photos/seed/aburent-empty/1200/800" alt="No bookings yet" />
                 <h3>Hali bron yo‘q</h3>
                 <p>Avtoparkdan mashina tanlang va shu yerda barcha bronlaringizni boshqaring.</p>
               </article>
@@ -811,7 +819,7 @@ function DLRentApp() {
           <div className="info-grid contact-grid">
             {contactCards.map((item) => (
               <article className="info-card" key={item.title}>
-                <img className="info-media" src={item.image} alt={item.title} />
+                <img className="info-media" src={resolveImageUrl(item.image)} alt={item.title} />
                 <h4>{item.title}</h4>
                 <p>{item.text}</p>
               </article>
@@ -834,7 +842,7 @@ function DLRentApp() {
           <div className="info-grid about-grid">
             {aboutCards.map((item) => (
               <article className="info-card" key={item.title}>
-                <img className="info-media" src={item.image} alt={item.title} />
+                <img className="info-media" src={resolveImageUrl(item.image)} alt={item.title} />
                 <h4>{item.title}</h4>
                 <p>{item.text}</p>
               </article>
@@ -870,7 +878,7 @@ function DLRentApp() {
               <textarea value={carImageLinks} onChange={(e) => setCarImageLinks(e.target.value)} placeholder={t.imageLinks} rows={3} />
               <label className="upload">{t.upload}<input type="file" accept="image/*" multiple onChange={onUploadImages} /></label>
             </div>
-            {carImages.length > 0 && <div className="preview-grid">{carImages.map((src, i) => <img key={i} src={src} className="preview" alt={`preview ${i+1}`} />)}</div>}
+            {carImages.length > 0 && <div className="preview-grid">{carImages.map((src, i) => <img key={i} src={resolveImageUrl(src)} className="preview" alt={`preview ${i+1}`} />)}</div>}
             <button type="submit">{t.save}</button>
           </form>
 
@@ -878,7 +886,7 @@ function DLRentApp() {
             {cars.map((car) => (
               <article className="card" key={car.id}>
                 <span className={`cat-badge ${categoryBadgeClass(car.category)}`}>{car.category}</span>
-                <img src={car.imageUrls[0]} alt={car.name} />
+                <img src={resolveImageUrl(car.imageUrls[0])} alt={car.name} />
                 <h3>{car.name}</h3>
                 <p>Qty: {car.quantity}</p>
                 <button className="danger" onClick={() => setCars((p) => p.filter((x) => x.id !== car.id))}>{t.del}</button>
