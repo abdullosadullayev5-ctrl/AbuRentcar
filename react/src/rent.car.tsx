@@ -1,1207 +1,2120 @@
-﻿import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
-import { createUserWithEmailAndPassword, getRedirectResult, onAuthStateChanged, signInWithEmailAndPassword, signInWithRedirect, signOut } from 'firebase/auth';
-import { auth as firebaseAuth, providers } from './Firebase';
+﻿
+import React, { useEffect, useState } from 'react';
 
-const abuRentLogo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 220'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0%25' stop-color='%23ffd773'/><stop offset='55%25' stop-color='%23f0a215'/><stop offset='100%25' stop-color='%237a4e00'/></linearGradient><radialGradient id='bg' cx='50%25' cy='40%25' r='65%25'><stop offset='0%25' stop-color='%232a1c06'/><stop offset='100%25' stop-color='%230d0f14'/></radialGradient></defs><rect width='220' height='220' rx='28' fill='url(%23bg)'/><circle cx='110' cy='92' r='70' fill='none' stroke='url(%23g)' stroke-width='4' opacity='0.8'/><path d='M58 132 L96 52 L126 52 L164 132 L144 132 L133 108 L88 108 L78 132 Z M96 92 H124 L110 64 Z' fill='url(%23g)'/><text x='110' y='176' fill='url(%23g)' font-size='30' font-family='Segoe UI, Arial, sans-serif' text-anchor='middle' font-weight='700'>ABU RENT</text></svg>";
-
-
-type Page = 'login' | 'home' | 'fleet' | 'detail' | 'bookings' | 'contacts' | 'about' | 'admin';
-type Role = 'admin' | 'user' | '';
-type Lang = 'uz' | 'ru' | 'en';
-type Sender = 'admin' | 'user';
-type CarCategory = 'Premium' | 'Sport' | 'SUV' | 'Oddiy';
+// ============================================
+// 1. MASHINALAR MA'LUMOTLARI
+// ============================================
 
 type Car = {
-  id: string;
+  id: number;
   name: string;
-  category: CarCategory;
-  pricePerDay: number;
-  fuelType: string;
-  transmission: 'Automatic' | 'Manual';
+  category: 'Sport' | 'Premium' | 'SUV' | 'Oddiy';
+  price: number;
+  fuel: string;
+  transmission: string;
+  year: number;
   seats: number;
-  modelYear: number;
-  quantity: number;
-  imageUrls: string[];
+  img: string;
+  specs: string[];
 };
-
-type Booking = {
-  id: string;
-  carId: string;
-  carName: string;
-  userName: string;
-  loginId?: string;
-  loginPassword?: string;
-  phone: string;
-  pickupDate: string;
-  returnDate: string;
-};
-
-type Message = { id: string; bookingId: string; sender: Sender; text: string; time: string };
-type LoginRecord = { id: string; user: string; password: string; action: 'login' | 'register' | 'admin' | 'social'; time: string };
-
-const MAX_IMAGES = 10;
-const AUTH_KEY = 'aburent_auth_v2';
-const CARS_KEY = 'aburent_cars_v2';
-const BOOKINGS_KEY = 'aburent_bookings_v2';
-const MESSAGES_KEY = 'aburent_messages_v2';
-const LOGIN_HISTORY_KEY = 'aburent_login_history_v1';
-const LANG_KEY = 'aburent_lang_v2';
-const THEME_KEY = 'aburent_theme_v2';
-const CAR_CATEGORIES: CarCategory[] = ['Premium', 'Sport', 'SUV', 'Oddiy'];
-
-const txt = {
-  uz: {
-    home: 'Bosh sahifa', fleet: 'Avtopark', bookings: 'Bandlar', contacts: 'Kontaktlar', about: 'Biz haqimizda',
-    admin: 'Admin', logout: 'Chiqish', login: 'Kirish', welcome: 'Qaytganingizdan xursandmiz',
-    userOrMail: 'Foydalanuvchi nomi yoki email', pass: 'Parol', google: 'Google orqali kirish', apple: 'Apple orqali kirish', microsoft: 'Microsoft orqali kirish',
-    emailLogin: 'Email bilan kirish', emailRegister: 'Email bilan ro‘yxatdan o‘tish',
-    browse: 'Mashinalarni ko‘rish', reserve: 'Band qilish', out: 'Mavjud emas', phone: 'Telefon', pickup: 'Olish sanasi',
-    ret: 'Qaytarish sanasi', addCar: 'Yangi mashina qo‘shish', save: 'Saqlash', del: 'O‘chirish', lang: 'Til',
-    search: 'Nomi yoki yoqilg‘i bo‘yicha qidirish', upload: 'Mashina rasmlari (10 tagacha)', imageLinks: 'Rasm URLlari (har qatorga bitta)',
-    myBookings: 'Mening bandlarim', allBookings: 'Barcha bandlar', openChat: 'Chat ochish', closeChat: 'Chat yopish', send: 'Yuborish', deleteMsg: "SMS o'chirish",
-    aboutText: 'Abu Rent qulay va tez avtomobil ijarasi xizmati.',
-  },
-  ru: {
-    home: 'Главная', fleet: 'Автопарк', bookings: 'Брони', contacts: 'Контакты', about: 'О нас',
-    admin: 'Админ', logout: 'Выйти', login: 'Войти', welcome: 'С возвращением',
-    userOrMail: 'Имя пользователя или email', pass: 'Пароль', google: 'Войти через Google', apple: 'Войти через Apple', microsoft: 'Войти через Microsoft',
-    emailLogin: 'Вход по email', emailRegister: 'Регистрация по email',
-    browse: 'Смотреть авто', reserve: 'Забронировать', out: 'Нет в наличии', phone: 'Телефон', pickup: 'Дата получения',
-    ret: 'Дата возврата', addCar: 'Добавить авто', save: 'Сохранить', del: 'Удалить', lang: 'Язык',
-    search: 'Поиск по названию или топливу', upload: 'Изображения авто (до 10)', imageLinks: 'URL изображений (по одному в строке)',
-    myBookings: 'Мои брони', allBookings: 'Все брони', openChat: 'Открыть чат', closeChat: 'Закрыть чат', send: 'Отправить', deleteMsg: 'Удалить SMS',
-    aboutText: 'Abu Rent - удобный и быстрый сервис аренды автомобилей.',
-  },
-  en: {
-    home: 'Home', fleet: 'Fleet', bookings: 'Bookings', contacts: 'Contacts', about: 'About',
-    admin: 'Admin', logout: 'Logout', login: 'Sign In', welcome: 'Welcome Back',
-    userOrMail: 'Username or email', pass: 'Password', google: 'Sign in with Google', apple: 'Sign in with Apple', microsoft: 'Sign in with Microsoft',
-    emailLogin: 'Sign in with email', emailRegister: 'Register with email',
-    browse: 'Browse Cars', reserve: 'Reserve now', out: 'Out of stock', phone: 'Phone', pickup: 'Pickup date',
-    ret: 'Return date', addCar: 'Add New Car', save: 'Save', del: 'Delete', lang: 'Language',
-    search: 'Search by name or fuel', upload: 'Car images (up to 10)', imageLinks: 'Image URLs (one per line)',
-    myBookings: 'My Bookings', allBookings: 'All Bookings', openChat: 'Open chat', closeChat: 'Close chat', send: 'Send', deleteMsg: 'Delete message',
-    aboutText: 'Abu Rent is a fast and comfortable car rental service.',
-  },
-} as const;
 
 const initialCars: Car[] = [
   {
-    id: '1', name: 'BMW X5 M Sport', category: 'Sport', pricePerDay: 145, fuelType: 'Petrol', transmission: 'Automatic', seats: 5, modelYear: 2023, quantity: 3,
-    imageUrls: [
-      'https://images.unsplash.com/photo-1555215695-3004980ad54e?auto=format&fit=crop&w=1400&q=80',
-      'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=1400&q=80',
-    ],
+    id: 1,
+    name: 'BMW X5 M Sport',
+    category: 'Sport',
+    price: 145,
+    fuel: 'Petrol',
+    transmission: 'Automatic',
+    year: 2023,
+    seats: 5,
+    img: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=400&h=300&fit=crop',
+    specs: ['🚗 5 мест', '⛽ Petrol', '⚙️ Автомат', '📅 2023'],
   },
   {
-    id: '2', name: 'Mercedes E220', category: 'Premium', pricePerDay: 125, fuelType: 'Diesel', transmission: 'Automatic', seats: 5, modelYear: 2022, quantity: 2,
-    imageUrls: [
-      'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?auto=format&fit=crop&w=1400&q=80',
-      'https://images.unsplash.com/photo-1553440569-bcc63803a83d?auto=format&fit=crop&w=1400&q=80',
-    ],
+    id: 2,
+    name: 'Mercedes E220',
+    category: 'Premium',
+    price: 125,
+    fuel: 'Diesel',
+    transmission: 'Automatic',
+    year: 2022,
+    seats: 5,
+    img: 'https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=400&h=300&fit=crop',
+    specs: ['🚗 5 мест', '⛽ Diesel', '⚙️ Автомат', '📅 2022'],
   },
   {
-    id: '3', name: 'Toyota Land Cruiser 300', category: 'SUV', pricePerDay: 180, fuelType: 'Petrol', transmission: 'Automatic', seats: 7, modelYear: 2024, quantity: 4,
-    imageUrls: [
-      'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?auto=format&fit=crop&w=1400&q=80',
-      'https://images.unsplash.com/photo-1626668893632-6f3a4466d22f?auto=format&fit=crop&w=1400&q=80',
-    ],
+    id: 3,
+    name: 'Toyota Land Cruiser 300',
+    category: 'SUV',
+    price: 180,
+    fuel: 'Petrol',
+    transmission: 'Automatic',
+    year: 2024,
+    seats: 7,
+    img: 'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=400&h=300&fit=crop',
+    specs: ['🚗 7 мест', '⛽ Petrol', '⚙️ Автомат', '📅 2024'],
   },
   {
-    id: '4', name: 'Porsche 911 Carrera', category: 'Sport', pricePerDay: 290, fuelType: 'Petrol', transmission: 'Automatic', seats: 2, modelYear: 2023, quantity: 2,
-    imageUrls: [
-      'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1400&q=80',
-      'https://images.unsplash.com/photo-1592198084033-aade902d1aae?auto=format&fit=crop&w=1400&q=80',
-    ],
+    id: 4,
+    name: 'Chevrolet Malibu',
+    category: 'Oddiy',
+    price: 78,
+    fuel: 'Petrol',
+    transmission: 'Automatic',
+    year: 2021,
+    seats: 5,
+    img: 'https://images.unsplash.com/photo-1549927681-13f288c8f4b9?w=400&h=300&fit=crop',
+    specs: ['🚗 5 мест', '⛽ Petrol', '⚙️ Автомат', '📅 2021'],
   },
   {
-    id: '5', name: 'Lexus LX 600', category: 'Premium', pricePerDay: 220, fuelType: 'Petrol', transmission: 'Automatic', seats: 7, modelYear: 2024, quantity: 2,
-    imageUrls: [
-      'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1400&q=80',
-      'https://images.unsplash.com/photo-1614200187524-dc4b892acf16?auto=format&fit=crop&w=1400&q=80',
-    ],
+    id: 5,
+    name: 'Porsche 911 Carrera',
+    category: 'Sport',
+    price: 290,
+    fuel: 'Petrol',
+    transmission: 'Automatic',
+    year: 2023,
+    seats: 2,
+    img: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&h=300&fit=crop',
+    specs: ['🚗 2 мест', '⛽ Petrol', '⚙️ Автомат', '📅 2023'],
   },
   {
-    id: '6', name: 'Chevrolet Malibu', category: 'Oddiy', pricePerDay: 78, fuelType: 'Petrol', transmission: 'Automatic', seats: 5, modelYear: 2021, quantity: 6,
-    imageUrls: [
-      'https://images.unsplash.com/photo-1549927681-13f288c8f4b9?auto=format&fit=crop&w=1400&q=80',
-      'https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=1400&q=80',
-    ],
+    id: 6,
+    name: 'Lexus LX 600',
+    category: 'Premium',
+    price: 220,
+    fuel: 'Petrol',
+    transmission: 'Automatic',
+    year: 2024,
+    seats: 7,
+    img: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=400&h=300&fit=crop',
+    specs: ['🚗 7 мест', '⛽ Petrol', '⚙️ Автомат', '📅 2024'],
   },
   {
-    id: '7', name: 'Kia K5', category: 'Oddiy', pricePerDay: 82, fuelType: 'Petrol', transmission: 'Automatic', seats: 5, modelYear: 2022, quantity: 5,
-    imageUrls: [
-      'https://images.unsplash.com/photo-1597007066704-67bf2068d5b2?auto=format&fit=crop&w=1400&q=80',
-      'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=1400&q=80',
-    ],
+    id: 7,
+    name: 'Range Rover Sport',
+    category: 'SUV',
+    price: 245,
+    fuel: 'Petrol',
+    transmission: 'Automatic',
+    year: 2024,
+    seats: 5,
+    img: 'https://images.unsplash.com/photo-1549924231-f129b911e442?w=400&h=300&fit=crop',
+    specs: ['🚗 5 мест', '⛽ Petrol', '⚙️ Автомат', '📅 2024'],
   },
   {
-    id: '8', name: 'Range Rover Sport', category: 'SUV', pricePerDay: 245, fuelType: 'Petrol', transmission: 'Automatic', seats: 5, modelYear: 2024, quantity: 3,
-    imageUrls: [
-      'https://images.unsplash.com/photo-1549924231-f129b911e442?auto=format&fit=crop&w=1400&q=80',
-      'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=1400&q=80',
-    ],
-  },
-  {
-    id: '9', name: 'Audi RS7', category: 'Sport', pricePerDay: 260, fuelType: 'Petrol', transmission: 'Automatic', seats: 5, modelYear: 2023, quantity: 2,
-    imageUrls: [
-      'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=1400&q=80',
-      'https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=1400&q=80',
-    ],
+    id: 8,
+    name: 'Audi RS7',
+    category: 'Sport',
+    price: 260,
+    fuel: 'Petrol',
+    transmission: 'Automatic',
+    year: 2023,
+    seats: 5,
+    img: 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=400&h=300&fit=crop',
+    specs: ['🚗 5 мест', '⛽ Petrol', '⚙️ Автомат', '📅 2023'],
   },
 ];
 
-const serviceHighlights = [
-  '24/7 buyurtma qabul qilish va tezkor javob',
-  'Shahar ichida yetkazib berish va olib ketish xizmati',
-  'Kunlik, haftalik, oylik ijara paketlari',
-  'Oilaviy, biznes va premium avtomobillar tanlovi',
-  'Texnik ko‘rikdan o‘tgan xavfsiz park',
-  'Shartnoma va to‘lov bo‘yicha aniq va shaffof tizim',
-  'Qo‘llab-quvvatlash: bronlashdan topshirishgacha',
-  'Doimiy mijozlar uchun chegirma tizimi',
-];
+// ============================================
+// 2. TILLAR VA TARJIMALAR
+// ============================================
 
-const serviceHighlightImages = [
-  'https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1563013544-824ae1b704d3?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1549921296-3a6b6fcd16d3?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1487754180451-c456f719a1fc?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=900&q=80',
-];
-const highlightImageByText: Record<string, string> = {
-  'Shartnoma va to‘lov bo‘yicha aniq va shaffof tizim':
-    'https://images.unsplash.com/photo-1554224154-22dec7ec8818?auto=format&fit=crop&w=1200&q=80',
-  'Oilaviy, biznes va premium avtomobillar tanlovi':
-    'https://images.unsplash.com/photo-1549921296-3a6b6fcd16d3?auto=format&fit=crop&w=1200&q=80',
-  'Shahar ichida yetkazib berish va olib ketish xizmati':
-    'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?auto=format&fit=crop&w=1200&q=80',
-};
-const serviceHighlightStickers = ['24/7', 'Delivery', 'Paket', 'Choice', 'Safe', 'Clear', 'Support', 'Bonus'];
-
-const rentalRules = [
-  'Haydovchilik guvohnomasi va shaxsni tasdiqlovchi hujjat talab qilinadi.',
-  'Mashina toza va to‘liq yoqilg‘i holatida topshirilishi kerak.',
-  'Yo‘l harakati qoidalari buzilishiga haydovchi javobgar bo‘ladi.',
-  'Mashina ijarasi muddatidan oldin uzaytirilsa oldindan xabar beriladi.',
-  'Uzoq safar va viloyatlararo yurish oldindan kelishiladi.',
-  'Kechikish holatida tarif bo‘yicha qo‘shimcha hisob-kitob qilinadi.',
-  'Favqulodda holatda call-markazga zudlik bilan murojaat qilinadi.',
-  'YTH yoki texnik nosozlikda servis ko‘rsatmasiga amal qilinadi.',
-];
-
-const faqItems = [
-  { q: 'Bron qilish uchun nima kerak?', a: 'Telefon raqam, haydovchilik guvohnomasi va ijara sanalari yetarli bo‘ladi.' },
-  { q: 'Oldindan to‘lov bormi?', a: 'Band qilish uchun paketga qarab avans to‘lovi bo‘lishi mumkin.' },
-  { q: 'Bir necha kunlik chegirma bormi?', a: 'Ha, 3+ kun, 7+ kun va 30+ kun paketlarda narx pasayadi.' },
-  { q: 'Boshqa shaharda qaytarish mumkinmi?', a: 'Maxsus xizmat sifatida oldindan kelishuv bilan tashkil qilinadi.' },
-  { q: 'Haydovchi bilan ijaraga berasizmi?', a: 'Talab bo‘lsa professional haydovchi xizmati alohida taklif qilinadi.' },
-  { q: 'Sug‘urta bormi?', a: 'Mashinalar asosiy sug‘urta qamrovida, shartlar shartnomada ko‘rsatiladi.' },
-];
-
-const roadTips = [
-  'Safardan oldin marshrut va yo‘l holatini tekshiring.',
-  'Kechki va uzoq yo‘lda dam olish intervalini rejalang.',
-  'Shinalar bosimi va yoqilg‘i darajasini nazorat qiling.',
-  'Yomg‘ir va tuman vaqtida tezlikni pasaytiring.',
-  'Telefon navigatsiya bilan birga oflayn xaritani ham saqlang.',
-  'Bolalar bilan safarda xavfsizlik kamarlarini doim tekshiring.',
-];
-const contactCards = [
-  {
-    title: 'Call Center',
-    text: '24/7 operatorlar tez javob beradi, bron va narx bo‘yicha yordam beradi.',
-    image: 'https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&w=1200&q=80',
+const translations = {
+  uz: {
+    home: 'Bosh sahifa',
+    fleet: 'Avtopark',
+    about: 'Biz haqimizda',
+    contacts: 'Kontaktlar',
+    welcome: 'Abu Rent - Toshkent va Buxoroda avtomobil ijarasi',
+    subTitle: 'Qulay, sifatli va arzon avtomobil ijarasi xizmati',
+    browseFleet: 'Avtopark ko\'rish',
+    reserve: 'Band qilish',
+    callNow: 'Hozir qo\'ng\'iroq qiling',
+    bookNow: 'Hozir band qilish',
+    booking: 'Bronlash',
+    pickupDate: 'Olish sanasi',
+    pickupTime: 'Olish vaqti',
+    returnDate: 'Qaytarish sanasi',
+    returnTime: 'Qaytarish vaqti',
+    pickupLocation: 'Olish joyi',
+    returnLocation: 'Qaytarish joyi',
+    next: 'DAVOM ETISH →',
+    popular: 'Mashhur avtomobillar',
+    carDetails: 'Mashinaning tafsiloti',
+    specifications: 'Xususiyatlari',
+    pricePerDay: 'kuniga',
+    perMonth: 'oyiga',
+    advantages: 'Afzalliklari',
+    fairPrices: 'Adolatli narxlar',
+    fairPricesDesc: 'Shaffof shartlar, yashirin to\'lovlar yo\'q',
+    insurance: 'Sug\'urta kiradi',
+    insuranceDesc: 'To\'liq sug\'urta va himoya',
+    delivery: 'Yetkazib berish',
+    deliveryDesc: 'Istalgan joyga yetkazib berish',
+    service24_7: '24/7 Xizmat',
+    serviceDesc: 'Tez yordam va qo\'llab-quvvatlash',
+    requirements: 'Talab etiladi',
+    driverLicense: 'Haydovchilik guvohnomasi',
+    minAge: '21 yosh',
+    minAgeDesc: 'Minimum yosh chegarasi',
+    experience: '2+ yillik tajriba',
+    experienceDesc: 'Haydovchilik tajribasi',
+    passport: 'Pasport',
+    aboutTitle: 'Abu Rent Haqida',
+    aboutDesc: 'Abu Rent - Toshkent va Buxoroda eng ishonchli avtomobil ijarasi xizmati.',
+    whyChooseUs: 'Nega bizni tanlaasiz?',
+    advantages_list: [
+      '✓ Yuqori sifatli va yangi avtomobillar',
+      '✓ Juda arzoon narxlar va chegirma',
+      '✓ Shahar bo\'ylab bepul yetkazib berish',
+      '✓ To\'liq sug\'urta qamrovi',
+      '✓ 24/7 professional qo\'llab-quvvatlash',
+      '✓ Shaffof va aniq shartnoma',
+    ],
+    phone: '+998 99 910 03 00',
+    phone2: '+998 95 420 03 00',
+    address: 'Toshkent: Mirabad tumani',
+    address2: 'Buxoro: Farovon MFY',
+    email: 'info@aburent.uz',
+    callCenter: 'Qo\'ng\'iroq markazi',
+    callCenterDesc: 'Operatorlar tez javob beradi',
+    whatsapp: 'WhatsApp',
+    telegram: 'Telegram',
+    messenger: 'Messenjeri',
+    menu: 'Menyu',
+    services: 'Xizmatlar',
+    company: 'Kompaniya',
+    followUs: 'Bizni kuzating',
+    allRightsReserved: 'Barcha huquqlar saqlanadi © 2025 Abu Rent',
   },
-  {
-    title: 'Shahar bo‘ylab yetkazish',
-    text: 'Buxoro, Toshkent va Samarqand bo‘yicha mashinani manzilga olib boramiz.',
-    image: 'https://images.unsplash.com/photo-1597007030739-6d2eaaaf2f35?auto=format&fit=crop&w=1200&q=80',
+
+  ru: {
+    home: 'Главная',
+    fleet: 'Автопарк',
+    about: 'О нас',
+    contacts: 'Контакты',
+    welcome: 'Abu Rent - аренда автомобилей в Ташкенте и Бухаре',
+    subTitle: 'Удобный, качественный и дешевый сервис аренды автомобилей',
+    browseFleet: 'Смотреть парк',
+    reserve: 'Забронировать',
+    callNow: 'Позвоните сейчас',
+    bookNow: 'Забронировать сейчас',
+    booking: 'Бронирование',
+    pickupDate: 'Дата подачи',
+    pickupTime: 'Время подачи',
+    returnDate: 'Дата возврата',
+    returnTime: 'Время возврата',
+    pickupLocation: 'Место получения',
+    returnLocation: 'Место возврата',
+    next: 'ДАЛЕЕ →',
+    popular: 'Популярные авто',
+    pricePerDay: 'в день',
+    advantages: 'Преимущества',
+    fairPrices: 'Справедливые цены',
+    fairPricesDesc: 'Прозрачные условия без скрытых платежей',
+    insurance: 'Страховка включена',
+    insuranceDesc: 'Полная страховка и защита',
+    delivery: 'Доставка',
+    deliveryDesc: 'Доставка в любое место',
+    service24_7: '24/7 Сервис',
+    serviceDesc: 'Быстрая помощь и поддержка',
+    requirements: 'Требования',
+    driverLicense: 'Водительское удостоверение',
+    minAge: '21 год',
+    experience: 'Опыт 2+ года',
+    passport: 'Паспорт',
+    aboutTitle: 'О Abu Rent',
+    aboutDesc: 'Abu Rent - самый надежный сервис аренды автомобилей.',
+    whyChooseUs: 'Почему выбирают нас?',
+    advantages_list: [
+      '✓ Высокое качество и новые автомобили',
+      '✓ Очень низкие цены и скидки',
+      '✓ Бесплатная доставка по городу',
+      '✓ Полное страховое покрытие',
+      '✓ Профессиональная поддержка 24/7',
+      '✓ Прозрачные и четкие условия',
+    ],
+    phone: '+998 99 910 03 00',
+    phone2: '+998 95 420 03 00',
+    address: 'Ташкент: Мирабадский район',
+    address2: 'Бухара: Фарғона МФЙ',
+    email: 'info@aburent.uz',
+    callCenter: 'Центр обслуживания',
+    callCenterDesc: 'Операторы отвечают быстро',
+    whatsapp: 'WhatsApp',
+    telegram: 'Telegram',
+    messenger: 'Мессенджеры',
+    menu: 'Меню',
+    services: 'Услуги',
+    company: 'Компания',
+    followUs: 'Следите за нами',
+    allRightsReserved: 'Все права защищены © 2025 Abu Rent',
   },
-  {
-    title: 'Korporativ xizmat',
-    text: 'Kompaniyalar uchun flot ijarasi, hujjatlar va hisob-kitob aniq yuritiladi.',
-    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80',
+  en: {
+    home: 'Home',
+    fleet: 'Fleet',
+    about: 'About',
+    contacts: 'Contacts',
+    welcome: 'Abu Rent - car rental in Tashkent and Bukhara',
+    subTitle: 'Comfortable, reliable, and affordable car rental service',
+    browseFleet: 'Browse fleet',
+    reserve: 'Reserve',
+    callNow: 'Call now',
+    bookNow: 'Book now',
+    booking: 'Booking',
+    pickupDate: 'Pickup date',
+    pickupTime: 'Pickup time',
+    returnDate: 'Return date',
+    returnTime: 'Return time',
+    pickupLocation: 'Pickup location',
+    returnLocation: 'Return location',
+    next: 'CONTINUE →',
+    popular: 'Popular cars',
+    carDetails: 'Car details',
+    specifications: 'Specifications',
+    pricePerDay: 'per day',
+    perMonth: 'per month',
+    advantages: 'Advantages',
+    fairPrices: 'Fair prices',
+    fairPricesDesc: 'Transparent terms, no hidden fees',
+    insurance: 'Insurance included',
+    insuranceDesc: 'Full insurance and protection',
+    delivery: 'Delivery',
+    deliveryDesc: 'Delivery to any location',
+    service24_7: '24/7 Service',
+    serviceDesc: 'Fast help and support',
+    requirements: 'Requirements',
+    driverLicense: 'Driver license',
+    minAge: 'Age 21+',
+    minAgeDesc: 'Minimum age requirement',
+    experience: '2+ years experience',
+    experienceDesc: 'Driving experience',
+    passport: 'Passport',
+    aboutTitle: 'About Abu Rent',
+    aboutDesc: 'Abu Rent is a trusted car rental service in Tashkent and Bukhara.',
+    whyChooseUs: 'Why choose us?',
+    advantages_list: [
+      '✓ High-quality and new cars',
+      '✓ Affordable prices and discounts',
+      '✓ Free city delivery',
+      '✓ Full insurance coverage',
+      '✓ 24/7 professional support',
+      '✓ Transparent and clear contracts',
+    ],
+    phone: '+998 99 910 03 00',
+    phone2: '+998 95 420 03 00',
+    address: 'Tashkent: Mirabad district',
+    address2: 'Bukhara: Farovon MFY',
+    email: 'info@aburent.uz',
+    callCenter: 'Call center',
+    callCenterDesc: 'Operators respond quickly',
+    whatsapp: 'WhatsApp',
+    telegram: 'Telegram',
+    messenger: 'Messengers',
+    menu: 'Menu',
+    services: 'Services',
+    company: 'Company',
+    followUs: 'Follow us',
+    allRightsReserved: 'All rights reserved © 2025 Abu Rent',
   },
-];
-const aboutCards = [
-  {
-    title: 'Toza va tayyor park',
-    text: 'Har bir avtomobil topshirishdan oldin texnik ko‘rik va tozalashdan o‘tadi.',
-    image: 'https://images.unsplash.com/photo-1485291571150-772bcfc10da5?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    title: 'Ishonchli jarayon',
-    text: 'Bronlash, tasdiqlash va topshirish bosqichlari aniq tartibda ishlaydi.',
-    image: 'https://images.unsplash.com/photo-1556155092-490a1ba16284?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    title: 'Mijozga yo‘naltirilgan',
-    text: 'Qisqa muddatli va uzoq muddatli paketlar ehtiyojga qarab moslashtiriladi.',
-    image: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&w=1200&q=80',
-  },
-];
-const categoryBadgeClass = (category: CarCategory) => `badge-${category.toLowerCase()}`;
+} as const;
 
-const today = new Date().toISOString().slice(0, 10);
-const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-const rid = () => Math.random().toString(36).slice(2, 11);
-const readLS = <T,>(key: string, fallback: T): T => {
-  try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return fallback;
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-};
+type Lang = keyof typeof translations;
 
-const readFilesAsDataUrls = (files: File[]) =>
-  Promise.all(
-    files.map(
-      (file) =>
-        new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || ''));
-          reader.onerror = () => resolve('');
-          reader.readAsDataURL(file);
-        }),
-    ),
-  );
+// ============================================
+// 3. MAIN COMPONENT
+// ============================================
 
-const getThirtyDayPrice = (pricePerDay: number) => pricePerDay * 30;
-const resolveImageUrl = (src: string) => {
-  if (!src || src.startsWith('data:')) return src;
-  if (src.includes('images.unsplash.com')) {
-    const seed = encodeURIComponent(src.split('/photo-')[1]?.split('?')[0] || 'aburent');
-    return `https://picsum.photos/seed/${seed}/1200/800`;
-  }
-  return src;
-};
+export default function AbuRentApp() {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('aburent-theme') as 'dark' | 'light') || 'dark';
+    }
+    return 'dark';
+  });
 
-function DLRentApp() {
-  const authState = readLS<{ role: Role; userName: string; page: Page; loginId?: string; loginPassword?: string }>(
-    AUTH_KEY,
-    { role: '', userName: '', page: 'login', loginId: '', loginPassword: '' },
-  );
+  const [lang, setLang] = useState<Lang>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('aburent-lang') as Lang) || 'uz';
+    }
+    return 'uz';
+  });
 
-  const [page, setPage] = useState<Page>(authState.role ? authState.page : 'login');
-  const [role, setRole] = useState<Role>(authState.role);
-  const [lang, setLang] = useState<Lang>(readLS<Lang>(LANG_KEY, 'uz'));
-  const [theme, setTheme] = useState<'dark' | 'light'>(readLS<'dark' | 'light'>(THEME_KEY, 'dark'));
-  const [userName, setUserName] = useState(authState.userName);
-  const [currentLoginId, setCurrentLoginId] = useState(authState.loginId || '');
-  const [currentLoginPassword, setCurrentLoginPassword] = useState(authState.loginPassword || '');
-  const [loginInput, setLoginInput] = useState('');
-  const [passwordInput, setPasswordInput] = useState('');
-  const [reserveNotice, setReserveNotice] = useState('');
-  const [cars, setCars] = useState<Car[]>(() =>
-    readLS<Car[]>(CARS_KEY, initialCars).map((car) => ({ ...car, category: car.category || 'Oddiy' })),
-  );
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<CarCategory | 'Barchasi'>('Barchasi');
-  const [selectedCarId, setSelectedCarId] = useState('');
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [phone, setPhone] = useState('');
-  const [pickupDate, setPickupDate] = useState(today);
-  const [returnDate, setReturnDate] = useState(tomorrow);
-  const [bookings, setBookings] = useState<Booking[]>(readLS<Booking[]>(BOOKINGS_KEY, []));
-  const [loginHistory, setLoginHistory] = useState<LoginRecord[]>(readLS<LoginRecord[]>(LOGIN_HISTORY_KEY, []));
-  const [activeBookingId, setActiveBookingId] = useState('');
-  const [messages, setMessages] = useState<Message[]>(readLS<Message[]>(MESSAGES_KEY, []));
-  const [chatText, setChatText] = useState('');
-
-  const [carName, setCarName] = useState('');
-  const [carPrice, setCarPrice] = useState(100);
-  const [carQty, setCarQty] = useState(1);
-  const [carFuel, setCarFuel] = useState('Petrol');
-  const [carTransmission, setCarTransmission] = useState<Car['transmission']>('Automatic');
-  const [carCategory, setCarCategory] = useState<CarCategory>('Oddiy');
-  const [carSeats, setCarSeats] = useState(5);
-  const [carYear, setCarYear] = useState(new Date().getFullYear());
-  const [carImageLinks, setCarImageLinks] = useState('');
-  const [carImages, setCarImages] = useState<string[]>([]);
+  const [page, setPage] = useState<'home' | 'fleet' | 'about' | 'contacts'>('home');
+  const [cars] = useState<Car[]>(initialCars);
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
   useEffect(() => {
-    localStorage.setItem(AUTH_KEY, JSON.stringify({ role, userName, page, loginId: currentLoginId, loginPassword: currentLoginPassword }));
-  }, [role, userName, page, currentLoginId, currentLoginPassword]);
-
-  useEffect(() => {
-    localStorage.setItem(CARS_KEY, JSON.stringify(cars));
-  }, [cars]);
-
-  useEffect(() => {
-    localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
-  }, [bookings]);
-
-  useEffect(() => {
-    localStorage.setItem(LOGIN_HISTORY_KEY, JSON.stringify(loginHistory));
-  }, [loginHistory]);
-
-  useEffect(() => {
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
-  }, [messages]);
-
-  useEffect(() => {
-    localStorage.setItem(LANG_KEY, JSON.stringify(lang));
-  }, [lang]);
-
-  useEffect(() => {
-    localStorage.setItem(THEME_KEY, JSON.stringify(theme));
+    localStorage.setItem('aburent-theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
   useEffect(() => {
-    if (!role && page !== 'login') setPage('login');
-  }, [role, page]);
+    localStorage.setItem('aburent-lang', lang);
+  }, [lang]);
 
-  useEffect(() => {
-    setReserveNotice('');
-  }, [selectedCarId, pickupDate, returnDate]);
+  const t = translations[lang];
 
-  useEffect(() => {
-    // Complete OAuth redirect flow without popup window close warnings.
-    void getRedirectResult(firebaseAuth)
-      .then((cred) => {
-        if (!cred) return;
-        const name = cred.user.displayName || cred.user.email || 'user';
-        setRole('user');
-        setUserName(name);
-        setCurrentLoginId(cred.user.email || name);
-        setCurrentLoginPassword('social-login');
-        setLoginHistory((p) => [{ id: rid(), user: cred.user.email || name, password: 'social-login', action: 'social' as const, time: new Date().toLocaleString() }, ...p].slice(0, 50));
-        setPage('home');
-      })
-      .catch((error) => {
-        console.error('Redirect login error:', error);
-      });
-  }, []);
-
-  useEffect(() => {
-    // Keep UI in sync with Firebase auth state across redirects and reloads.
-    const unsub = onAuthStateChanged(firebaseAuth, (user) => {
-      if (!user) return;
-      const name = user.displayName || user.email || 'user';
-      setRole('user');
-      setUserName(name);
-      if (!currentLoginId) setCurrentLoginId(user.email || name);
-      if (page === 'login') setPage('home');
-    });
-    return () => unsub();
-  }, [currentLoginId, page]);
-
-  const t = txt[lang];
-  const selectedCar = useMemo(() => cars.find((c) => c.id === selectedCarId) || null, [cars, selectedCarId]);
-  const rentalDays = useMemo(() => {
-    const start = new Date(pickupDate);
-    const end = new Date(returnDate);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 1;
-    const diff = Math.ceil((end.getTime() - start.getTime()) / 86400000) + 1;
-    return Math.max(1, diff);
-  }, [pickupDate, returnDate]);
-  const rentalTotal = useMemo(() => (selectedCar ? selectedCar.pricePerDay * rentalDays : 0), [selectedCar, rentalDays]);
-  const visibleCars = useMemo(
-    () =>
-      cars.filter((c) => {
-        const q = `${c.name} ${c.fuelType} ${c.category}`.toLowerCase();
-        const isSearchMatch = q.includes(search.toLowerCase());
-        const isCategoryMatch = categoryFilter === 'Barchasi' || c.category === categoryFilter;
-        return isSearchMatch && isCategoryMatch;
-      }),
-    [cars, search, categoryFilter],
-  );
-  const myBookings = useMemo(() => (role === 'admin' ? bookings : bookings.filter((b) => b.userName === userName)), [bookings, role, userName]);
-  const activeMessages = useMemo(() => messages.filter((m) => m.bookingId === activeBookingId), [messages, activeBookingId]);
-
-  const login = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const name = loginInput.trim();
-    const pass = passwordInput.trim();
-    if (!name || !pass) return;
-
-    const nextRole: Role = name === 'Admin234' && pass === 'Admin123' ? 'admin' : 'user';
-    if (nextRole === 'admin') {
-      setRole(nextRole);
-      setUserName(name);
-      setCurrentLoginId(name);
-      setCurrentLoginPassword(pass);
-      setLoginHistory((p) => [{ id: rid(), user: name, password: pass, action: 'admin' as const, time: new Date().toLocaleString() }, ...p].slice(0, 50));
-      setPage('admin');
-      return;
-    }
-
-    if (!name.includes('@')) {
-      alert('Email kiriting. Masalan: user@gmail.com');
-      return;
-    }
-
-    try {
-      const credential = await signInWithEmailAndPassword(firebaseAuth, name, pass);
-      const displayName = credential.user.displayName || credential.user.email || name;
-      setRole('user');
-      setUserName(displayName);
-      setCurrentLoginId(name);
-      setCurrentLoginPassword(pass);
-      setLoginHistory((p) => [{ id: rid(), user: name, password: pass, action: 'login' as const, time: new Date().toLocaleString() }, ...p].slice(0, 50));
-      setPage('home');
-    } catch (error) {
-      console.error('Email/password auth error:', error);
-      alert('Email/parol auth bajarilmadi. Firebase Console > Authentication > Sign-in method > Email/Password ni yoqing.');
-    }
+  const handleThemeToggle = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
-  const registerAccount = async () => {
-    const email = loginInput.trim();
-    const pass = passwordInput.trim();
-    if (!email || !pass) return;
-    if (!email.includes('@')) {
-      alert('Ro‘yxatdan o‘tish uchun email kiriting. Masalan: user@gmail.com');
-      return;
-    }
-    try {
-      const credential = await createUserWithEmailAndPassword(firebaseAuth, email, pass);
-      const displayName = credential.user.displayName || credential.user.email || email;
-      setRole('user');
-      setUserName(displayName);
-      setCurrentLoginId(email);
-      setCurrentLoginPassword(pass);
-      setLoginHistory((p) => [{ id: rid(), user: email, password: pass, action: 'register' as const, time: new Date().toLocaleString() }, ...p].slice(0, 50));
-      setPage('home');
-      alert("Yangi account yaratildi va tizimga kirdingiz.");
-    } catch (error) {
-      console.error('Register error:', error);
-      alert("Ro'yxatdan o'tish bajarilmadi. Firebase Authentication Email/Password yoqilganini tekshiring.");
-    }
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setLang(e.target.value as Lang);
   };
 
-  const socialLogin = async (provider: 'google' | 'apple' | 'microsoft') => {
-    try {
-      await signInWithRedirect(firebaseAuth, providers[provider]);
-    } catch (error) {
-      const code = (error as { code?: string })?.code || 'unknown';
-      console.error('Social redirect login error:', error);
-      const host = typeof window !== 'undefined' ? window.location.hostname : 'current-domain';
-      alert(`Social login bajarilmadi (${code}). Firebase > Authentication > Settings > Authorized domains ga ${host} ni qo'shing.`);
-    }
+  const handleNavigate = (newPage: 'home' | 'fleet' | 'about' | 'contacts') => {
+    setPage(newPage);
+    window.scrollTo(0, 0);
   };
 
-  const logout = async () => {
-    try {
-      await signOut(firebaseAuth);
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-    setRole('');
-    setUserName('');
-    setCurrentLoginId('');
-    setCurrentLoginPassword('');
-    setLoginInput('');
-    setPasswordInput('');
-    setPage('login');
-  };
-
-  const reserve = () => {
-    if (!selectedCar || !phone.trim() || selectedCar.quantity <= 0) return;
-    const booking: Booking = {
-      id: rid(),
-      carId: selectedCar.id,
-      carName: selectedCar.name,
-      userName,
-      loginId: currentLoginId || userName,
-      loginPassword: currentLoginPassword || '-',
-      phone: phone.trim(),
-      pickupDate,
-      returnDate,
-    };
-    setBookings((p) => [...p, booking]);
-    setCars((p) => p.map((c) => (c.id === selectedCar.id ? { ...c, quantity: c.quantity - 1 } : c)));
-    setPhone('');
-    setReserveNotice(`Band qilindi: ${selectedCar.name}. ${rentalDays} kun, jami EUR ${rentalTotal}.`);
-    alert('Band qilindi!');
-    setPage('bookings');
-  };
-
-  const addCar = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!carName.trim()) return;
-    const urlLines = carImageLinks.split(/\r?\n|,|;/).map((s) => s.trim()).filter(Boolean);
-    const allImages = [...carImages, ...urlLines].slice(0, MAX_IMAGES);
-    if (allImages.length === 0) allImages.push('https://picsum.photos/seed/aburent-default/1200/800');
-
-    const car: Car = {
-      id: rid(),
-      name: carName.trim(),
-      category: carCategory,
-      pricePerDay: Math.max(1, carPrice),
-      fuelType: carFuel,
-      transmission: carTransmission,
-      seats: Math.max(2, carSeats),
-      modelYear: Math.max(1990, carYear),
-      quantity: Math.max(1, carQty),
-      imageUrls: allImages,
-    };
-    setCars((p) => [...p, car]);
-    setCarName('');
-    setCarPrice(100);
-    setCarQty(1);
-    setCarFuel('Petrol');
-    setCarTransmission('Automatic');
-    setCarCategory('Oddiy');
-    setCarSeats(5);
-    setCarYear(new Date().getFullYear());
-    setCarImageLinks('');
-    setCarImages([]);
-  };
-
-  const onUploadImages = async (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith('image/')).slice(0, MAX_IMAGES);
-    const dataUrls = (await readFilesAsDataUrls(files)).filter(Boolean).slice(0, MAX_IMAGES);
-    setCarImages(dataUrls);
-    e.target.value = '';
-  };
-
-  const sendMessage = () => {
-    if (!activeBookingId || !chatText.trim()) return;
-    setMessages((p) => [...p, {
-      id: rid(), bookingId: activeBookingId, sender: role === 'admin' ? 'admin' : 'user', text: chatText.trim(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }]);
-    setChatText('');
-  };
-
-  const deleteMessage = (id: string) => {
-    setMessages((p) => p.filter((m) => m.id !== id));
-  };
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 
   return (
-    <div className="app">
-      <style>{styles}</style>
-      <header className="topbar">
-        <div className="info-strip">
-          <span>24/7 ishlaymiz</span>
-          <span>Buxoro va Toshkent bo'ylab yetkazib berish</span>
-          <span>Manzil: Buxoro, Farovon MFY (Lubot yaqinida)</span>
-          <span>Telefon: +998 99 910 03 00</span>
-        </div>
-        <div className="top-main">
-          <button className="brand" onClick={() => setPage(role === 'admin' ? 'admin' : 'home')}>
-            <img src={abuRentLogo} alt="Abu Rent logo" />
-            <span>Abu Rent</span>
-          </button>
-
-          <div className="controls">
-            <label className="lang">
-              <span>{t.lang}</span>
-              <select value={lang} onChange={(e) => setLang(e.target.value as Lang)}>
-                <option value="uz">UZ</option><option value="ru">RU</option><option value="en">EN</option>
-              </select>
-            </label>
-
-            {role !== '' && (
-              <nav className="nav">
-                {role !== 'admin' && <button className="nav-link" onClick={() => setPage('home')}>{t.home}</button>}
-                <button className="nav-link" onClick={() => setPage('fleet')}>{t.fleet}</button>
-                <button className="nav-link" onClick={() => setPage('bookings')}>{t.bookings}</button>
-                <button className="nav-link" onClick={() => setPage('contacts')}>{t.contacts}</button>
-                <button className="nav-link" onClick={() => setPage('about')}>{t.about}</button>
-                {role === 'admin' && <button className="nav-link" onClick={() => setPage('admin')}>{t.admin}</button>}
-                <button className="nav-link" onClick={() => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'))}>
-                  {theme === 'dark' ? 'Light' : 'Dark'}
-                </button>
-                <button className="nav-link" onClick={logout}>{t.logout}</button>
-              </nav>
-            )}
+    <div className={`abu-rent-app theme-${theme}`}>
+      {/* ========== HEADER ========== */}
+      <header className="header">
+        <div className="header-top">
+          <div className="logo" onClick={() => handleNavigate('home')}>
+            <span className="logo-icon">🚗</span>
+            <span className="logo-text">Abu Rent</span>
           </div>
+
+          <div className="header-controls">
+            <select className="lang-selector" value={lang} onChange={handleLanguageChange}>
+              <option value="uz">🇺🇿 UZ</option>
+              <option value="ru">🇷🇺 RU</option>
+              <option value="en">🇬🇧 EN</option>
+            </select>
+
+            <button className="theme-toggle" onClick={handleThemeToggle}>
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+          </div>
+        </div>
+
+        <nav className="navigation">
+          <button className={`nav-link ${page === 'home' ? 'active' : ''}`} onClick={() => handleNavigate('home')}>
+            {t.home}
+          </button>
+          <button className={`nav-link ${page === 'fleet' ? 'active' : ''}`} onClick={() => handleNavigate('fleet')}>
+            {t.fleet}
+          </button>
+          <button className={`nav-link ${page === 'about' ? 'active' : ''}`} onClick={() => handleNavigate('about')}>
+            {t.about}
+          </button>
+          <button
+            className={`nav-link ${page === 'contacts' ? 'active' : ''}`}
+            onClick={() => handleNavigate('contacts')}
+          >
+            {t.contacts}
+          </button>
+        </nav>
+
+        <div className="header-contact">
+          <span className="phone-icon">📞</span>
+          <span className="phone-text">{t.phone}</span>
         </div>
       </header>
-
-      {page === 'login' && (
-        <main className="center">
-          <form className="panel login" onSubmit={login}>
-            <h1>{t.welcome}</h1>
-            <input name="login" value={loginInput} onChange={(e) => setLoginInput(e.target.value)} placeholder={t.userOrMail} required />
-            <input name="password" type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder={t.pass} required />
-            <button type="submit">{t.login}</button>
-            <button type="button" onClick={registerAccount}>{t.emailRegister}</button>
-            <div className="social-row">
-              <button type="button" className="social google" onClick={() => socialLogin('google')}>{t.google}</button>
-              <button type="button" className="social apple" onClick={() => socialLogin('apple')}>{t.apple}</button>
-              <button type="button" className="social microsoft" onClick={() => socialLogin('microsoft')}>{t.microsoft}</button>
-            </div>
-            <small>Admin: Admin234 / Admin123</small>
-          </form>
-        </main>
-      )}
-
-      {page === 'home' && (
-        <main className="page">
-          <section className="hero panel">
-            <h1>{cars[0]?.name}</h1>
-            <p>EUR {cars[0]?.pricePerDay}/day</p>
-            <button onClick={() => setPage('fleet')}>{t.browse}</button>
-          </section>
-
-          <section className="panel info-block">
-            <h2>Abu Rent afzalliklari</h2>
-            <div className="info-grid">
-              {serviceHighlights.map((item, idx) => (
-                <article className="info-card" key={item}>
-                  <div className="sticker">{serviceHighlightStickers[idx % serviceHighlightStickers.length]}</div>
-                  <img
-                    className="info-media"
-                    src={resolveImageUrl(highlightImageByText[item] || serviceHighlightImages[idx % serviceHighlightImages.length])}
-                    alt={item}
-                  />
-                  <p>{item}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className="panel info-block">
-            <h2>Ijara qoidalari va tartiblar</h2>
-            <ul className="feature-list">
-              {rentalRules.map((item) => <li key={item}>{item}</li>)}
-            </ul>
-          </section>
-
-          <section className="panel info-block">
-            <h2>Yo‘lga chiqishdan oldin tavsiyalar</h2>
-            <ul className="feature-list">
-              {roadTips.map((item) => <li key={item}>{item}</li>)}
-            </ul>
-          </section>
-        </main>
-      )}
-
-      {page === 'fleet' && (
-        <main className="page">
-          <div className="row between">
-            <h2>{t.fleet}</h2>
-            <div className="fleet-filters">
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} />
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as CarCategory | 'Barchasi')}>
-                <option value="Barchasi">Barchasi</option>
-                {CAR_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
-              </select>
-            </div>
-          </div>
-          <section className="grid">
-            {visibleCars.map((car) => (
-              <article className="card" key={car.id}>
-                <span className={`cat-badge ${categoryBadgeClass(car.category)}`}>{car.category}</span>
-                <img src={resolveImageUrl(car.imageUrls[0])} alt={car.name} />
-                <h3>{car.name}</h3>
-                <p>EUR {car.pricePerDay}/day</p>
-                <p>1 kun: EUR {car.pricePerDay} | 30 kun: EUR {getThirtyDayPrice(car.pricePerDay)}</p>
-                <p>{car.fuelType} | {car.transmission} | {car.seats}</p>
-                <p>{car.modelYear} | Qty: {car.quantity}</p>
-                <button onClick={() => { setSelectedCarId(car.id); setSelectedImage(0); setPage('detail'); }}>View</button>
-              </article>
-            ))}
-          </section>
-        </main>
-      )}
-
-      {page === 'detail' && selectedCar && (
-        <main className="page detail-wrap">
-          <section className="detail">
-            <div>
-              <img src={resolveImageUrl(selectedCar.imageUrls[selectedImage])} alt={selectedCar.name} />
-              <div className="thumbs">
-                {selectedCar.imageUrls.map((img, i) => (
-                  <button key={`${selectedCar.id}-${i}`} className={`thumb ${selectedImage === i ? 'active' : ''}`} onClick={() => setSelectedImage(i)}>
-                    <img src={resolveImageUrl(img)} alt={`${selectedCar.name} ${i + 1}`} />
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="panel">
-              <h2>{selectedCar.name}</h2>
-              <p>EUR {selectedCar.pricePerDay}/day</p>
-              <p>Tur: {selectedCar.category}</p>
-              <p>1 kun: EUR {selectedCar.pricePerDay}</p>
-              <p>30 kun: EUR {getThirtyDayPrice(selectedCar.pricePerDay)}</p>
-              <label>{t.phone}<input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></label>
-              <label>{t.pickup}<input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} /></label>
-              <label>{t.ret}<input type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} /></label>
-              <p>Ijara muddati: {rentalDays} kun</p>
-              <p>Jami narx: EUR {rentalTotal}</p>
-              {reserveNotice && <p className="ok-note">{reserveNotice}</p>}
-              <button onClick={reserve} disabled={selectedCar.quantity <= 0}>{selectedCar.quantity <= 0 ? t.out : t.reserve}</button>
-            </div>
-          </section>
-        </main>
-      )}
-
-      {page === 'bookings' && (
-        <main className="page">
-          <h2>{role === 'admin' ? t.allBookings : t.myBookings}</h2>
-          {reserveNotice && <p className="ok-note">{reserveNotice}</p>}
-          <section className="booking-overview">
-            <article className="panel booking-stat">
-              <p className="booking-k">Jami bron</p>
-              <h3>{myBookings.length}</h3>
-            </article>
-            <article className="panel booking-stat">
-              <p className="booking-k">Faol chat</p>
-              <h3>{activeBookingId ? 1 : 0}</h3>
-            </article>
-            <article className="panel booking-stat">
-              <p className="booking-k">Oxirgi bron</p>
-              <h3>{myBookings[myBookings.length - 1]?.carName || '-'}</h3>
-            </article>
-          </section>
-          <section className="grid">
-            {myBookings.length === 0 && (
-              <article className="card booking-empty">
-                <img src="https://picsum.photos/seed/aburent-empty/1200/800" alt="No bookings yet" />
-                <h3>Hali bron yo‘q</h3>
-                <p>Avtoparkdan mashina tanlang va shu yerda barcha bronlaringizni boshqaring.</p>
-              </article>
-            )}
-            {myBookings.map((b) => (
-              <article className="card" key={b.id}>
-                <h3>{b.carName}</h3>
-                <span className="booking-sticker">Band qilindi</span>
-                <p>{b.userName}</p>
-                <p>{b.phone}</p>
-                <p>{b.pickupDate} - {b.returnDate}</p>
-                <button onClick={() => setActiveBookingId(activeBookingId === b.id ? '' : b.id)}>
-                  {activeBookingId === b.id ? t.closeChat : t.openChat}
+      {/* ========== MAIN CONTENT ========== */}
+      <main className="main-content">
+        {/* HOME PAGE */}
+        {page === 'home' && (
+          <div className="page page-home">
+            {/* Hero Section */}
+            <section className="hero">
+              <div className="hero-content">
+                <h1>{t.welcome}</h1>
+                <p className="hero-subtitle">{t.subTitle}</p>
+                <button className="btn btn-primary" onClick={() => handleNavigate('fleet')}>
+                  {t.browseFleet} →
                 </button>
-              </article>
-            ))}
-          </section>
-
-          {activeBookingId && (
-            <section className="panel chat">
-              <div className="messages">
-                {activeMessages.map((m) => (
-                  <div key={m.id} className={`chat-msg ${m.sender === 'admin' ? 'from-admin' : 'from-user'}`}>
-                    <div className="chat-msg-head">
-                      <b>{m.sender}</b>
-                      <small>{m.time}</small>
-                    </div>
-                    <p>{m.text}</p>
-                    {role === 'admin' && (
-                      <button type="button" className="danger chat-del" onClick={() => deleteMessage(m.id)}>
-                        {t.deleteMsg}
-                      </button>
-                    )}
-                  </div>
-                ))}
               </div>
-              <div className="row chat-compose">
-                <input value={chatText} onChange={(e) => setChatText(e.target.value)} placeholder="Message" />
-                <button onClick={sendMessage}>{t.send}</button>
+              <div className="hero-image">
+                <img
+                  src="https://images.unsplash.com/photo-1552820728-8ac41f1ce891?w=600&h=400&fit=crop"
+                  alt="Hero Car"
+                  loading="lazy"
+                />
               </div>
             </section>
-          )}
-        </main>
-      )}
 
-      {page === 'contacts' && (
-        <main className="page panel">
-          <h2>{t.contacts}</h2>
-          <p>Telefon: +998 99 910 03 00, +998 95 420 03 00</p>
-          <p>Qo‘shimcha aloqa: +998 97 309 42 99</p>
-          <p>Email: info@dlrent.uz</p>
-          <p>24/7 xizmat ko'rsatamiz, kechasi ham buyurtma qabul qilinadi.</p>
-          <p>Buxoro: Farovon MFY (Lubot yaqinida)</p>
-          <p>Toshkent: Mirabad tumani, Sayhun ko'chasi 170A</p>
-          <p>Samarqand: Registon yaqinida yetkazib berish nuqtasi</p>
-          <p>Farg‘ona vodiysi: oldindan bron orqali yuborish xizmati</p>
-          <p>Korxona mijozlari uchun maxsus shartnoma asosida flot xizmatlari mavjud.</p>
-          <p>Telegram, Instagram va telefon orqali bir xil narx siyosati qo‘llanadi.</p>
-          <div className="info-grid contact-grid">
-            {contactCards.map((item) => (
-              <article className="info-card" key={item.title}>
-                <img className="info-media" src={resolveImageUrl(item.image)} alt={item.title} />
-                <h4>{item.title}</h4>
-                <p>{item.text}</p>
-              </article>
-            ))}
-          </div>
-        </main>
-      )}
-      {page === 'about' && (
-        <main className="page panel">
-          <h2>{t.about}</h2>
-          <p>{t.aboutText}</p>
-          <p>Bizning xizmat rent car ehtiyojlariga mos: kunlik, haftalik va uzoq muddatli ijara.</p>
-          <p>Shartnomalar shaffof, narxlar oldindan aniq ko'rsatiladi.</p>
-          <p>Har bir avtomobil ichki va tashqi tozalashdan o‘tkazilib mijozga topshiriladi.</p>
-          <p>Mijoz tajribasini yaxshilash uchun bronlash, tasdiqlash va topshirish jarayonlari standartlashtirilgan.</p>
-          <p>Talab yuqori mavsumda ham navbatni kamaytirish uchun oldindan bron tizimi ishlatiladi.</p>
-          <p>Uzoq muddatli ijaralarda servis va texnik xizmat rejalari alohida boshqariladi.</p>
-          <p>Biznes segmenti uchun shofyor bilan xizmat, aeroport transfer va korporativ tariflar mavjud.</p>
-          <p>Xavfsizlik uchun mashinalarda davriy texnik diagnostika va yo‘lga chiqishdan oldingi tekshiruvlar qilinadi.</p>
-          <div className="info-grid about-grid">
-            {aboutCards.map((item) => (
-              <article className="info-card" key={item.title}>
-                <img className="info-media" src={resolveImageUrl(item.image)} alt={item.title} />
-                <h4>{item.title}</h4>
-                <p>{item.text}</p>
-              </article>
-            ))}
-          </div>
-          <h3>Ko‘p so‘raladigan savollar</h3>
-          <div className="info-grid">
-            {faqItems.map((item) => (
-              <article className="info-card" key={item.q}>
-                <h4>{item.q}</h4>
-                <p>{item.a}</p>
-              </article>
-            ))}
-          </div>
-        </main>
-      )}
+            {/* Booking Form Section */}
+            <section className="booking-section">
+              <div className="booking-form">
+                <h3>{t.booking}</h3>
 
-      {page === 'admin' && role === 'admin' && (
-        <main className="page">
-          <form className="panel admin" onSubmit={addCar}>
-            <h3>{t.addCar}</h3>
-            <div className="grid form-grid">
-              <input value={carName} onChange={(e) => setCarName(e.target.value)} placeholder="Car name" required />
-              <input type="number" value={carPrice} onChange={(e) => setCarPrice(Number(e.target.value) || 0)} placeholder="Price/day" required />
-              <input type="number" value={carQty} onChange={(e) => setCarQty(Number(e.target.value) || 1)} placeholder="Quantity" required />
-              <input value={carFuel} onChange={(e) => setCarFuel(e.target.value)} placeholder="Fuel" required />
-              <select value={carTransmission} onChange={(e) => setCarTransmission(e.target.value as Car['transmission'])}><option>Automatic</option><option>Manual</option></select>
-              <select value={carCategory} onChange={(e) => setCarCategory(e.target.value as CarCategory)}>
-                {CAR_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
-              </select>
-              <input type="number" value={carSeats} onChange={(e) => setCarSeats(Number(e.target.value) || 5)} placeholder="Seats" required />
-              <input type="number" value={carYear} onChange={(e) => setCarYear(Number(e.target.value) || 2024)} placeholder="Year" required />
-              <textarea value={carImageLinks} onChange={(e) => setCarImageLinks(e.target.value)} placeholder={t.imageLinks} rows={3} />
-              <label className="upload">{t.upload}<input type="file" accept="image/*" multiple onChange={onUploadImages} /></label>
+                <div className="booking-grid">
+                  <div className="form-group">
+                    <label>{t.pickupDate}</label>
+                    <input type="date" defaultValue={today} />
+                  </div>
+
+                  <div className="form-group">
+                    <label>{t.pickupTime}</label>
+                    <input type="time" defaultValue="11:00" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>{t.returnDate}</label>
+                    <input type="date" defaultValue={tomorrow} />
+                  </div>
+
+                  <div className="form-group">
+                    <label>{t.returnTime}</label>
+                    <input type="time" defaultValue="11:00" />
+                  </div>
+
+                  <div className="form-group">
+                    <label>{t.pickupLocation}</label>
+                    <select>
+                      <option>Toshkent</option>
+                      <option>Buxoro</option>
+                      <option>Samarqand</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label>{t.returnLocation}</label>
+                    <select>
+                      <option>Toshkent</option>
+                      <option>Buxoro</option>
+                      <option>Samarqand</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button className="btn btn-primary btn-full">{t.next}</button>
+              </div>
+            </section>
+
+            {/* Popular Cars */}
+            <section className="section popular-cars">
+              <h2>{t.popular}</h2>
+              <div className="cars-grid">
+                {cars.slice(0, 4).map((car) => (
+                  <CarCard
+                    key={car.id}
+                    car={car}
+                    t={t}
+                    onHover={setHoveredCard}
+                    isHovered={hoveredCard === car.id}
+                  />
+                ))}
+              </div>
+            </section>
+
+            {/* Advantages */}
+            <section className="section advantages">
+              <h2>{t.advantages}</h2>
+              <div className="advantages-grid">
+                <AdvantageCard icon="💰" title={t.fairPrices} desc={t.fairPricesDesc} />
+                <AdvantageCard icon="🛡️" title={t.insurance} desc={t.insuranceDesc} />
+                <AdvantageCard icon="🚚" title={t.delivery} desc={t.deliveryDesc} />
+                <AdvantageCard icon="⭐" title={t.service24_7} desc={t.serviceDesc} />
+              </div>
+            </section>
+
+            {/* Requirements */}
+            <section className="section requirements">
+              <h2>{t.requirements}</h2>
+              <div className="requirements-grid">
+                <RequirementCard number="1" title={t.driverLicense} desc="Kerak" />
+                <RequirementCard number="2" title={t.minAge} desc={t.minAge} />
+                <RequirementCard number="3" title={t.experience} desc={t.experience} />
+                <RequirementCard number="4" title={t.passport} desc="Kerak" />
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* FLEET PAGE */}
+        {page === 'fleet' && (
+          <div className="page page-fleet">
+            <div className="page-header">
+              <h2>{t.fleet}</h2>
+              <p>
+                {cars.length} {t.popular}
+              </p>
             </div>
-            {carImages.length > 0 && <div className="preview-grid">{carImages.map((src, i) => <img key={i} src={resolveImageUrl(src)} className="preview" alt={`preview ${i+1}`} />)}</div>}
-            <button type="submit">{t.save}</button>
-          </form>
 
-          <section className="grid">
-            {cars.map((car) => (
-              <article className="card" key={car.id}>
-                <span className={`cat-badge ${categoryBadgeClass(car.category)}`}>{car.category}</span>
-                <img src={resolveImageUrl(car.imageUrls[0])} alt={car.name} />
-                <h3>{car.name}</h3>
-                <p>Qty: {car.quantity}</p>
-                <button className="danger" onClick={() => setCars((p) => p.filter((x) => x.id !== car.id))}>{t.del}</button>
-              </article>
-            ))}
-          </section>
-          <section className="panel info-block">
-            <h3>Kirish tarixi (login / parol)</h3>
-            {loginHistory.length === 0 && <p>Hozircha kirish ma'lumoti yo'q.</p>}
-            <div className="info-grid">
-              {loginHistory.map((item) => (
-                <article className="info-card" key={item.id}>
-                  <p><b>Vaqt:</b> {item.time}</p>
-                  <p><b>User:</b> {item.user}</p>
-                  <p><b>Parol:</b> {item.password}</p>
-                  <p><b>Turi:</b> {item.action}</p>
-                </article>
+            <div className="cars-grid-large">
+              {cars.map((car) => (
+                <CarCardLarge
+                  key={car.id}
+                  car={car}
+                  t={t}
+                  onHover={setHoveredCard}
+                  isHovered={hoveredCard === car.id}
+                />
               ))}
             </div>
-          </section>
-          <section className="panel info-block">
-            <h3>Kim qaysi mashinani oldi</h3>
-            {bookings.length === 0 && <p>Hozircha band qilingan mashina yo'q.</p>}
-            <div className="info-grid">
-              {bookings.map((b) => (
-                <article className="info-card" key={b.id}>
-                  <p><b>User:</b> {b.userName}</p>
-                  <p><b>Login:</b> {b.loginId || '-'}</p>
-                  <p><b>Parol:</b> {b.loginPassword || '-'}</p>
-                  <p><b>Mashina:</b> {b.carName}</p>
-                  <p><b>Sana:</b> {b.pickupDate} - {b.returnDate}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-        </main>
-      )}
+          </div>
+        )}
 
-      {page !== 'login' && (
-        <footer className="footer">
-          <div className="footer-brand">
-            <p>Abu Rent</p>
-            <a className="footer-call" href="tel:+998973094299">
-              +998 97 309 42 99
+        {/* ABOUT PAGE */}
+        {page === 'about' && (
+          <div className="page page-about">
+            <div className="page-header">
+              <h2>{t.aboutTitle}</h2>
+            </div>
+
+            <div className="about-content">
+              <p className="about-desc">{t.aboutDesc}</p>
+
+              <h3>{t.whyChooseUs}</h3>
+              <div className="advantages-list">
+                {t.advantages_list.map((advantage, idx) => (
+                  <p key={idx} className="advantage-item">
+                    {advantage}
+                  </p>
+                ))}
+              </div>
+
+              <div className="about-info">
+                <div className="info-card">
+                  <h4>📞 Tez murojaat</h4>
+                  <p>Savollaringizga tez javob beramiz</p>
+                </div>
+                <div className="info-card">
+                  <h4>💼 Professional jamoasi</h4>
+                  <p>Tajribali va sog'lom jamoasi</p>
+                </div>
+                <div className="info-card">
+                  <h4>🌟 Yuqori sifat</h4>
+                  <p>Eng yaxshi avtomobil va xizmat</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* CONTACTS PAGE */}
+        {page === 'contacts' && (
+          <div className="page page-contacts">
+            <div className="page-header">
+              <h2>{t.contacts}</h2>
+            </div>
+
+            <div className="contacts-grid">
+              <div className="contact-card">
+                <h3>📞 {t.callCenter}</h3>
+                <p>{t.callCenterDesc}</p>
+                <div className="contact-items">
+                  <a href="tel:+99899910030" className="contact-link">
+                    {t.phone}
+                  </a>
+                  <a href="tel:+99895420030" className="contact-link">
+                    {t.phone2}
+                  </a>
+                </div>
+                <button className="btn btn-primary">{t.callNow}</button>
+              </div>
+
+              <div className="contact-card">
+                <h3>📍 {t.address}</h3>
+                <p>{t.address}</p>
+                <p>{t.address2}</p>
+              </div>
+
+              <div className="contact-card">
+                <h3>💬 {t.messenger}</h3>
+                <p>24/7 aloqa:</p>
+                <div className="contact-items">
+                  <a href="https://wa.me/99899910030" className="contact-link">
+                    {t.whatsapp}
+                  </a>
+                  <a href="https://t.me/aburent" className="contact-link">
+                    {t.telegram}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* ========== FOOTER ========== */}
+      <footer className="footer">
+        <div className="footer-content">
+          <div className="footer-column">
+            <h4>{t.company}</h4>
+            <p>Abu Rent - {t.subTitle}</p>
+          </div>
+
+          <div className="footer-column">
+            <h4>{t.menu}</h4>
+            <a href="#home" onClick={() => handleNavigate('home')}>
+              {t.home}
+            </a>
+            <a href="#fleet" onClick={() => handleNavigate('fleet')}>
+              {t.fleet}
+            </a>
+            <a href="#about" onClick={() => handleNavigate('about')}>
+              {t.about}
+            </a>
+            <a href="#contacts" onClick={() => handleNavigate('contacts')}>
+              {t.contacts}
             </a>
           </div>
-          <div className="footer-map">
-            <iframe
-              title="Abu Rent manzil"
-              src="https://maps.google.com/maps?q=Buxoro%20Farovon%20MFY%20Lubot&t=&z=14&ie=UTF8&iwloc=&output=embed"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
+
+          <div className="footer-column">
+            <h4>{t.services}</h4>
+            <a href="#service1">Avtomobil ijarasi</a>
+            <a href="#service2">Shahar bo'ylab yetkazish</a>
+            <a href="#service3">Xodim orqali ijarasi</a>
+            <a href="#service4">Uzoq muddatli ijara</a>
           </div>
-          <div className="footer-social-links">
-            <a className="footer-social-btn" href="https://www.instagram.com/23_0w0/" target="_blank" rel="noreferrer">
+
+          <div className="footer-column">
+            <h4>{t.followUs}</h4>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">
               Instagram
             </a>
-            <a className="footer-social-btn" href="https://www.youtube.com/@Anime_uz-m5e" target="_blank" rel="noreferrer">
-              YouTube
-            </a>
-            <a className="footer-social-btn" href="https://t.me/frontendflowers" target="_blank" rel="noreferrer">
+            <a href="https://telegram.com" target="_blank" rel="noopener noreferrer">
               Telegram
             </a>
+            <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">
+              YouTube
+            </a>
           </div>
-        </footer>
-      )}
+        </div>
+
+        <div className="footer-bottom">
+          <p>{t.allRightsReserved}</p>
+          <p>Email: {t.email}</p>
+        </div>
+      </footer>
+
+      <style>{globalStyles}</style>
+    </div>
+  );
+}
+// ============================================
+// 4. SUB-COMPONENTS WITH HOVER
+// ============================================
+
+type CarCardProps = {
+  car: Car;
+  t: (typeof translations)[Lang];
+  onHover: (id: number | null) => void;
+  isHovered: boolean;
+};
+
+type AdvantageProps = { icon: string; title: string; desc: string };
+
+type RequirementProps = { number: string; title: string; desc: string };
+
+function CarCard({ car, t, onHover, isHovered }: CarCardProps) {
+  return (
+    <div
+      className={`car-card ${isHovered ? 'hover-active' : ''}`}
+      onMouseEnter={() => onHover(car.id)}
+      onMouseLeave={() => onHover(null)}
+    >
+      <div className="car-badge">{car.category}</div>
+      <div className="car-image-wrapper">
+        <img src={car.img} alt={car.name} loading="lazy" className="car-image" />
+        <div className="image-overlay"></div>
+      </div>
+      <div className="car-info">
+        <h4>{car.name}</h4>
+        <p className="year">{car.year}</p>
+        <div className="specs">
+          <span>🚗 {car.seats}</span>
+          <span>⛽ {car.fuel}</span>
+        </div>
+        <div className="price">
+          <span className="price-value">от ${car.price}</span>
+          <span className="price-period">/{t.pricePerDay}</span>
+        </div>
+      </div>
     </div>
   );
 }
 
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+function CarCardLarge({ car, t, onHover, isHovered }: CarCardProps) {
+  return (
+    <div
+      className={`car-card-large ${isHovered ? 'hover-active' : ''}`}
+      onMouseEnter={() => onHover(car.id)}
+      onMouseLeave={() => onHover(null)}
+    >
+      <div className="car-badge">{car.category}</div>
+      <div className="car-image-wrapper">
+        <img src={car.img} alt={car.name} loading="lazy" className="car-image" />
+        <div className="image-overlay-large"></div>
+      </div>
+      <div className="car-info-large">
+        <h3>{car.name}</h3>
+        <p className="year">{car.year}</p>
+        <div className="specs-large">
+          {car.specs.map((spec, idx) => (
+            <span key={idx}>{spec}</span>
+          ))}
+        </div>
+        <div className="price-large">
+          <span className="price-value">от ${car.price}</span>
+          <span className="price-period">/{t.pricePerDay}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdvantageCard({ icon, title, desc }: AdvantageProps) {
+  return (
+    <div className="advantage-card">
+      <div className="adv-icon">{icon}</div>
+      <h4>{title}</h4>
+      <p>{desc}</p>
+    </div>
+  );
+}
+
+function RequirementCard({ number, title, desc }: RequirementProps) {
+  return (
+    <div className="requirement-card">
+      <div className="req-number">{number}</div>
+      <h4>{title}</h4>
+      <p>{desc}</p>
+    </div>
+  );
+}
+
+
+
+const globalStyles = `
+
+
   :root {
-    --bg:#0b0f14; --surface:#161b23; --line:#2c3442; --text:#f5f7fb; --muted:#9aa3b2;
-    --accent:#f0a215; --accent-2:#2ec4b6; --accent-3:#ff7b54; --accent-glow:#ffcf70;
-    --input:#1f2632; --inputLine:#394255; --top:#0d121ae6;
-    --page-grad-a:#1a2436; --page-grad-b:#0b0f14; --shadow:#00000055;
-    --hover-ease:cubic-bezier(0.34, 1.56, 0.64, 1);
+    --color-primary: #ff6b35;
+    --color-primary-light: #ff8c42;
+    --color-secondary: #004e89;
+    --color-success: #06d6a0;
+    --color-error: #ef476f;
+
+    --bg-dark: #0f1419;
+    --bg-dark-secondary: #1a1f2e;
+    --bg-dark-tertiary: #252d3d;
+    --text-dark: #ffffff;
+    --text-dark-secondary: #b0b8c1;
+    --border-dark: rgba(255, 255, 255, 0.1);
+
+    --bg-light: #f5f7fa;
+    --bg-light-secondary: #ffffff;
+    --bg-light-tertiary: #f0f2f5;
+    --text-light: #1a1f2e;
+    --text-light-secondary: #5a6370;
+    --border-light: #e0e4e9;
   }
+
   [data-theme="light"] {
-    --bg:#eef4ff; --surface:#ffffff; --line:#cfd8e6; --text:#132033; --muted:#55657d;
-    --accent:#d88c12; --accent-2:#1f9d8b; --accent-3:#ff7b54; --accent-glow:#ffd18a;
-    --input:#ffffff; --inputLine:#c8d4e2; --top:#ffffffd9;
-    --page-grad-a:#d7e7ff; --page-grad-b:#f8fbff; --shadow:#1e293b33;
+    --bg-primary: var(--bg-light);
+    --bg-secondary: var(--bg-light-secondary);
+    --bg-tertiary: var(--bg-light-tertiary);
+    --text-primary: var(--text-light);
+    --text-secondary: var(--text-light-secondary);
+    --border-color: var(--border-light);
   }
-  *{box-sizing:border-box}
-  body{margin:0;background:
-      radial-gradient(circle at 20% 10%,#ffffff14,transparent 40%),
-      radial-gradient(circle at 85% 0%,#f0a21522,transparent 42%),
-      radial-gradient(circle at 0% 100%,#7dd3fc1a,transparent 40%),
-      radial-gradient(circle at top,var(--page-grad-a) 0,var(--page-grad-b) 68%);
-    color:var(--text);font-family:Outfit,Segoe UI,Tahoma,sans-serif;transition:background .35s ease,color .25s ease;background-attachment:fixed}
-  a{color:inherit}
-  @keyframes floatIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes glowPulse{0%{box-shadow:0 0 0 transparent}50%{box-shadow:0 0 28px #f0a21533}100%{box-shadow:0 0 0 transparent}}
-  .app{padding:0 16px 24px;position:relative;isolation:isolate}
-  .app::before{
-    content:'';
-    position:fixed;
-    inset:0;
-    background:
-      linear-gradient(120deg,#ffffff0f,transparent 60%),
-      radial-gradient(circle at 75% 20%,#ffd6701f,transparent 45%);
-    pointer-events:none;
-    z-index:-1;
+
+  [data-theme="dark"] {
+    --bg-primary: var(--bg-dark);
+    --bg-secondary: var(--bg-dark-secondary);
+    --bg-tertiary: var(--bg-dark-tertiary);
+    --text-primary: var(--text-dark);
+    --text-secondary: var(--text-dark-secondary);
+    --border-color: var(--border-dark);
   }
-  .topbar{position:sticky;top:0;background:color-mix(in oklab,var(--bg) 84%,#000);backdrop-filter:blur(14px);border-bottom:1px solid #2b3340;z-index:10;box-shadow:0 18px 30px var(--shadow)}
-  .info-strip{width:100%;margin:0;padding:8px 16px;display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:12px}
-  .top-main{width:100%;margin:0;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 16px}
-  .brand{display:flex;align-items:center;gap:10px;background:transparent;color:var(--accent);border:0;font-size:1.1rem;font-weight:800;text-shadow:0 10px 20px #00000066;transition:transform .35s var(--hover-ease),text-shadow .35s var(--hover-ease)}
-  .brand img{width:44px;height:44px;border-radius:10px;transition:transform .35s var(--hover-ease),box-shadow .35s var(--hover-ease)}
-  .brand:hover{transform:translateX(5px) scale(1.08);text-shadow:0 0 18px #ffcf70aa}
-  .brand:hover img{transform:scale(1.08) rotate(10deg);box-shadow:0 10px 24px #00000055}
-  .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-  .lang{display:flex;gap:8px;align-items:center;color:var(--muted)}
-  .nav{display:flex;gap:8px;flex-wrap:wrap}
-  .nav-link{background:transparent;border:1px solid transparent;color:var(--text);padding:9px 12px;border-radius:12px;transition:.35s var(--hover-ease);position:relative;overflow:hidden;font-weight:600}
-  .nav-link::before{content:'';position:absolute;left:10px;right:10px;bottom:6px;height:2px;background:var(--accent);transform:scaleX(0);transform-origin:left;transition:transform .35s var(--hover-ease)}
-  .nav-link::after{content:'';position:absolute;inset:0;background:linear-gradient(120deg,#f0a21522,transparent 60%);opacity:0;transition:.25s}
-  .nav-link:hover{border-color:#f0a21566;color:var(--accent);transform:translateY(-3px);background:#f0a21512}
-  .nav-link:hover::after{opacity:1}
-  .nav-link:hover::before{transform:scaleX(1)}
-  button{border:0;border-radius:999px;padding:10px 16px;background:linear-gradient(135deg,#f0a215,#f8c24a);font-weight:700;color:#1a1305;cursor:pointer;transition:.25s;position:relative;overflow:hidden;box-shadow:0 10px 18px #0000002b}
-  button::before{content:'';position:absolute;left:-120%;top:0;width:120%;height:100%;background:linear-gradient(120deg,transparent,#ffffff66,transparent);transition:transform .45s}
-  button:hover::before{transform:translateX(190%)}
-  button:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 14px 28px #00000045}
-  button:active{transform:translateY(0) scale(0.98)}
-  .danger{background:linear-gradient(135deg,#c4274e,#f05252);color:#fff}
-  input,textarea,select{width:100%;background:var(--input);color:var(--text);border:1px solid var(--inputLine);border-radius:12px;padding:11px 12px;transition:border-color .2s,box-shadow .2s}
-  input:focus,textarea:focus,select:focus{outline:none;border-color:color-mix(in oklab,var(--accent) 60%,#fff);box-shadow:0 0 0 3px #f0a21522}
-  .panel{background:color-mix(in oklab,var(--surface) 88%,transparent);border:1px solid color-mix(in oklab,var(--line) 60%,#ffffff);border-radius:18px;padding:18px;backdrop-filter:blur(10px);box-shadow:0 22px 40px #0000002f}
-  .center{min-height:80vh;display:grid;place-items:center}
-  .login{
-    width:min(520px,95vw);
-    display:grid;
-    gap:10px;
-    background:
-      linear-gradient(165deg,#ffffff45,#ffffff15),
-      radial-gradient(circle at 15% 10%,#ffffff3a,transparent 46%),
-      radial-gradient(circle at 88% 92%,#7ec8ff2f,transparent 42%);
-    border:1px solid #ffffff80;
-    box-shadow:0 28px 60px #00000066,inset 0 1px 0 #ffffff95;
-    backdrop-filter:blur(28px) saturate(1.45);
-    -webkit-backdrop-filter:blur(28px) saturate(1.45);
-    animation:floatIn .55s ease both;
+
+  /* ============================================
+     GLOBAL STYLES
+     ============================================ */
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
   }
-  .ok-note{padding:10px 12px;border-radius:12px;background:#16a34a22;border:1px solid #22c55e55;color:#d1fae5}
-  .social-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  .social{border-radius:12px;transition:.25s;box-shadow:0 10px 18px #0000002b}
-  .social:hover{transform:translateY(-2px);box-shadow:0 16px 26px #0000003f}
-  .google{background:#fff;color:#1f2937}
-  .apple{background:#1f2430;color:#fff}
-  .microsoft{background:linear-gradient(135deg,#0078d4,#3aa0ff);color:#fff}
-  .hero,.page{max-width:1300px;margin:22px auto;animation:floatIn .5s ease both}
-  .hero h1{transition:transform .35s var(--hover-ease),color .35s var(--hover-ease)}
-  .hero:hover h1{color:#ff6b35;transform:translateX(10px)}
-  .hero img{transition:transform .35s var(--hover-ease),box-shadow .35s var(--hover-ease)}
-  .hero:hover img{transform:scale(1.08) rotate(1deg);box-shadow:0 30px 80px #00000055}
-  .info-block{margin-top:14px}
-  .info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
-  .info-card{position:relative;border:1px solid color-mix(in oklab,var(--line) 70%,#000);background:color-mix(in oklab,var(--surface) 92%,#000);border-radius:14px;padding:12px;overflow:hidden;transition:transform .35s var(--hover-ease),border-color .35s var(--hover-ease),box-shadow .35s var(--hover-ease)}
-  .info-card::after{content:'';position:absolute;inset:-40% -20% auto auto;width:180px;height:180px;background:radial-gradient(circle at center,#2ec4b633,transparent 60%);opacity:.45}
-  .info-card:hover{transform:translateY(-12px) scale(1.02);border-color:#ff6b35;box-shadow:0 20px 50px #00000066}
-  .info-card:hover h4{color:#ff6b35;transform:translateY(-3px)}
-  .info-media{width:100%;height:104px;object-fit:cover;border-radius:10px;border:1px solid #ffffff1d;margin-bottom:10px}
-  .sticker{position:absolute;top:10px;right:10px;background:#0f172acc;color:#f8fafc;border:1px solid #ffffff40;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;backdrop-filter:blur(4px)}
-  .info-card h4{margin:0 0 8px;transition:transform .35s var(--hover-ease),color .35s var(--hover-ease)}
-  .info-card p{margin:0;line-height:1.45}
-  .feature-list{margin:0;padding-left:20px;display:grid;gap:8px;line-height:1.5}
-  .feature-list li{transition:transform .3s var(--hover-ease),color .3s var(--hover-ease)}
-  .feature-list li:hover{transform:translateY(-3px);color:#ff6b35}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .between{justify-content:space-between}
-  .fleet-filters{display:flex;gap:10px;flex-wrap:wrap;width:min(760px,100%)}
-  .fleet-filters input{flex:1 1 280px}
-  .fleet-filters select{flex:0 0 180px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:14px}
-  .card{position:relative;background:
-      linear-gradient(160deg,#ffffff08,transparent 40%),
-      color-mix(in oklab,var(--surface) 88%,transparent);
-    border:1px solid #ffffff1f;border-radius:16px;padding:14px;display:grid;gap:8px;transition:.35s var(--hover-ease);overflow:hidden}
-  .card::after{content:'';position:absolute;inset:auto -20% -30% auto;width:220px;height:220px;background:radial-gradient(circle,#f0a21533,transparent 65%);opacity:.6;pointer-events:none}
-  .card:hover{transform:translateY(-12px) scale(1.02);border-color:#ff6b35;box-shadow:0 25px 50px #00000066}
-  .card img,.preview{width:100%;height:230px;object-fit:cover;border-radius:12px;border:1px solid #323a49;transition:transform .35s var(--hover-ease)}
-  .card:hover img{transform:scale(1.15) rotate(3deg)}
-  .cat-badge{position:absolute;top:20px;left:20px;z-index:2;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800;border:1px solid #ffffff70;background:#0f172acc;color:#fff;backdrop-filter:blur(5px)}
-  .badge-premium{background:#3f2b00d9}
-  .badge-sport{background:#7f1d1dd9}
-  .badge-suv{background:#0c4a6ed9}
-  .badge-oddiy{background:#334155d9}
-  .booking-sticker{display:inline-block;width:max-content;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#16a34a25;border:1px solid #22c55e73;color:#dcfce7;transition:transform .35s var(--hover-ease),box-shadow .35s var(--hover-ease)}
-  .card:hover .booking-sticker{transform:translateY(-5px) scale(1.1);box-shadow:0 8px 20px #00000045}
-  .booking-overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:12px 0}
-  .booking-stat{display:grid;gap:4px}
-  .booking-k{margin:0;color:var(--muted);font-size:12px}
-  .booking-empty p{line-height:1.5}
-  .contact-grid,.about-grid{margin-top:16px}
-  .detail-wrap{max-width:1300px}
-  .detail{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
-  .detail > div:first-child{display:grid;gap:10px}
-  .detail > div:first-child > img{width:100%;height:min(62vh,620px);object-fit:cover;border-radius:14px;border:1px solid #323a49;transition:transform .35s var(--hover-ease),box-shadow .35s var(--hover-ease)}
-  .detail > div:first-child:hover > img{transform:scale(1.08) rotate(1deg);box-shadow:0 30px 80px #00000055}
-  .thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-  .thumb{padding:0;border-radius:10px;background:transparent;border:1px solid transparent;transition:transform .35s var(--hover-ease),box-shadow .35s var(--hover-ease)}
-  .thumb img{width:80px;height:56px;object-fit:cover;border-radius:10px;border:0}
-  .thumb.active{border-color:var(--accent)}
-  .thumb:hover{transform:translateY(-3px) scale(1.05);box-shadow:0 10px 20px #00000045}
-  .chat .messages{max-height:280px;overflow:auto;display:grid;gap:10px}
-  .chat-msg{border:1px solid color-mix(in oklab,var(--line) 80%,#000);border-radius:12px;padding:10px;background:color-mix(in oklab,var(--surface) 90%,#000)}
-  .chat-msg-head{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted)}
-  .chat-msg p{margin:8px 0 0;line-height:1.4}
-  .chat-msg.from-admin{border-color:#c8881c66}
-  .chat-del{margin-top:10px;padding:7px 12px;font-size:12px}
-  .chat-compose{margin-top:12px}
-  .form-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
-  .detail .panel label{display:grid;gap:6px;transition:transform .35s var(--hover-ease),color .35s var(--hover-ease)}
-  .detail .panel label:hover{transform:translateY(-3px);color:#ff6b35}
-  .detail .panel input:focus{transform:translateY(-3px) scale(1.01)}
-  .upload{display:grid;gap:8px;color:var(--muted);border:1px dashed color-mix(in oklab,var(--line) 85%,#000);padding:10px;border-radius:12px}
-  .preview-grid{margin:12px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-  .preview{height:120px}
-  .footer{max-width:1300px;margin:14px auto 0;border:1px solid #ffffff22;background:color-mix(in oklab,var(--surface) 88%,transparent);border-radius:14px;padding:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;backdrop-filter:blur(10px);box-shadow:0 18px 32px #0000002f}
-  .footer-brand{display:grid;gap:6px}
-  .footer-brand p{transition:transform .3s var(--hover-ease),opacity .3s var(--hover-ease)}
-  .footer-brand:hover p{transform:translateY(-2px);opacity:1}
-  .footer-call{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:999px;padding:9px 14px;font-weight:700;color:#15100a;background:linear-gradient(135deg,#ffd670,#f0a215);transition:.2s;animation:glowPulse 4s ease infinite}
-  .footer-call:hover{transform:translateY(-2px);box-shadow:0 12px 22px #00000038}
-  .footer-map{flex:1 1 280px;min-width:260px;max-width:460px;border-radius:12px;overflow:hidden;border:1px solid #ffffff2e}
-  .footer-map iframe{display:block;width:100%;height:120px;border:0}
-  .footer-social-links{display:flex;gap:8px;flex-wrap:wrap}
-  .footer-social-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:999px;padding:9px 13px;font-weight:700;color:#15100a;background:linear-gradient(135deg,#f0a215,#ffd670);transition:.35s var(--hover-ease);box-shadow:0 10px 18px #00000026;position:relative}
-  .footer-social-btn::after{content:'→';margin-left:8px;opacity:0;transform:translateX(-6px);transition:.35s var(--hover-ease)}
-  .footer-social-btn:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 12px 22px #00000038}
-  .footer-social-btn:hover::after{opacity:1;transform:translateX(0)}
-  @media (max-width:900px){
-    .app{padding:0 10px 20px}
-    .info-strip{font-size:11px;gap:8px;padding:8px 10px}
-    .top-main{flex-direction:column;align-items:stretch;padding:10px 0}
-    .brand{justify-content:center}
-    .controls{flex-direction:column;align-items:stretch}
-    .lang{justify-content:space-between}
-    .nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-    .nav-link{width:100%}
-    .panel{padding:14px}
-    .login{width:100%}
-    .social-row{grid-template-columns:1fr}
-    .hero,.page{margin:14px auto}
-    .booking-overview{grid-template-columns:1fr}
-    .info-grid{grid-template-columns:1fr}
-    .between{flex-direction:column;align-items:stretch}
-    .grid{grid-template-columns:1fr;gap:12px}
-    .detail{grid-template-columns:1fr}
-    .card img{height:210px}
-    .detail > div:first-child > img{height:min(52vh,420px)}
-    .row{flex-direction:column;align-items:stretch}
-    .chat-compose button{width:100%}
-    .footer{padding:12px}
-    .footer-map{max-width:100%}
-    .footer-map iframe{height:140px}
-    .footer-social-links{width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-    .footer-social-btn{padding:8px 6px;font-size:12px}
+
+  html {
+    scroll-behavior: smooth;
   }
-  @media (max-width:640px){
-    body{background:
-      radial-gradient(circle at 10% 15%,#ffffff1f,transparent 42%),
-      radial-gradient(circle at 90% 0%,#f0a2152b,transparent 44%),
-      radial-gradient(circle at 0% 100%,#7dd3fc24,transparent 45%),
-      radial-gradient(circle at top,var(--page-grad-a) 0,var(--page-grad-b) 72%)}
-    .app{padding:0 12px 72px}
-    .topbar{position:sticky;top:0;border-bottom:1px solid #ffffff1d}
-    .info-strip{display:none}
-    .brand{font-size:1.2rem;letter-spacing:.3px}
-    .brand img{width:50px;height:50px;border-radius:14px;box-shadow:0 10px 20px #00000044}
-    .nav{display:flex;gap:8px;flex-wrap:nowrap;overflow:auto;padding-bottom:2px;scrollbar-width:none}
-    .nav::-webkit-scrollbar{display:none}
-    .nav-link{flex:0 0 auto;padding:10px 14px;border-radius:999px;border:1px solid #ffffff24;background:#0f172a85}
-    .nav-link:hover{transform:none}
-    .panel{border-radius:20px;padding:16px;box-shadow:0 14px 28px #0000003b}
-    .login{padding:18px;border-radius:22px}
-    .login input,.login textarea{caret-color:transparent}
-    .social-row{gap:10px;grid-template-columns:1fr}
-    .hero,.page{margin:12px auto}
-    .card{border-radius:20px;padding:16px;box-shadow:0 16px 32px #0000003f}
-    .card img{height:220px;border-radius:16px}
-    .cat-badge{top:16px;left:16px}
-    .detail > div:first-child > img{height:min(50vh,360px);border-radius:18px}
-    .thumb img{width:72px;height:52px}
-    .booking-sticker{font-size:11px}
-    .footer{border-radius:20px}
-    .footer-social-links{grid-template-columns:repeat(2,minmax(0,1fr))}
+
+  body {
+    font-family: 'Segoe UI', 'Tahoma', 'Geneva', 'Verdana', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+    line-height: 1.6;
   }
-  @media (hover: none){
-    .nav-link:hover,.card:hover,.info-card:hover,button:hover,.footer-call:hover,.footer-social-btn:hover{transform:none;box-shadow:none}
+
+  .abu-rent-app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
-  @media (max-width:420px){
-    .app{padding:0 10px 64px}
-    .brand{font-size:1.1rem}
-    .nav-link{padding:9px 12px}
-    .card img{height:200px}
-    .detail > div:first-child > img{height:min(46vh,320px)}
-    .footer-map iframe{height:160px}
+
+  /* ============================================
+     HEADER STYLES WITH HOVER
+     ============================================ */
+
+  .header {
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+    padding: 20px 40px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .header:hover {
+    box-shadow: 0 8px 30px rgba(255, 107, 53, 0.3);
+  }
+
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 28px;
+    font-weight: 800;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: left center;
+  }
+
+  .logo:hover {
+    transform: scale(1.08) translateX(5px);
+    text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 255, 255, 0.3);
+  }
+
+  .logo-icon {
+    font-size: 36px;
+    display: inline-block;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .logo:hover .logo-icon {
+    transform: scale(1.2) rotate(10deg);
+  }
+
+  .logo-text {
+    letter-spacing: 0.5px;
+  }
+
+  .header-controls {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+
+  .lang-selector,
+  .theme-toggle {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    backdrop-filter: blur(10px);
+  }
+
+  .lang-selector:hover,
+  .theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.4);
+    border-color: rgba(255, 255, 255, 0.7);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+  }
+
+  .lang-selector:active,
+  .theme-toggle:active {
+    transform: translateY(0);
+  }
+
+  .lang-selector {
+    min-width: 100px;
+  }
+
+  .theme-toggle {
+    padding: 10px 12px;
+    font-size: 18px;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .theme-toggle:hover {
+    transform: translateY(-2px) rotate(15deg);
+  }
+
+  .navigation {
+    display: flex;
+    gap: 30px;
+    max-width: 1400px;
+    margin: 0 auto;
+    flex-wrap: wrap;
+  }
+
+  .nav-link {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 0;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+
+  .nav-link::before {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 0;
+    height: 3px;
+    background: white;
+    transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .nav-link:hover::before,
+  .nav-link.active::before {
+    width: 100%;
+  }
+
+  .nav-link:hover {
+    transform: translateY(-3px);
+  }
+
+  .header-contact {
+    max-width: 1400px;
+    margin: 0 auto;
+    text-align: right;
+    color: white;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .header-contact:hover {
+    transform: scale(1.05);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  }
+
+  .phone-icon {
+    font-size: 20px;
+    display: inline-block;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .header-contact:hover .phone-icon {
+    transform: scale(1.3) rotate(-15deg);
+  }
+
+  /* ============================================
+     MAIN CONTENT
+     ============================================ */
+
+  .main-content {
+    flex: 1;
+  }
+
+  .page {
+    min-height: 100vh;
+    animation: fadeIn 0.5s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .page-header {
+    text-align: center;
+    padding: 60px 40px 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .page-header h2 {
+    font-size: 42px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .page-header:hover h2 {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 10px rgba(255, 107, 53, 0.3));
+  }
+
+  /* ============================================
+     HERO SECTION WITH HOVER
+     ============================================ */
+
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 50px;
+    align-items: center;
+    padding: 80px 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .hero-content h1 {
+    font-size: 56px;
+    margin-bottom: 20px;
+    line-height: 1.2;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .hero-content:hover h1 {
+    color: #ff6b35;
+    transform: translateX(10px);
+  }
+
+  .hero-subtitle {
+    font-size: 18px;
+    color: var(--text-secondary);
+    margin-bottom: 30px;
+    line-height: 1.6;
+    transition: all 0.3s ease;
+  }
+
+  .hero-content:hover .hero-subtitle {
+    color: var(--text-primary);
+    transform: translateX(5px);
+  }
+
+  .hero-image {
+    position: relative;
+    overflow: hidden;
+    border-radius: 16px;
+  }
+
+  .hero-image img {
+    width: 100%;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .hero-image:hover img {
+    transform: scale(1.08) rotate(1deg);
+    box-shadow: 0 30px 80px rgba(255, 107, 53, 0.3);
+  }
+
+  /* ============================================
+     BOOKING FORM WITH HOVER
+     ============================================ */
+
+  .booking-section {
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+    padding: 60px 40px;
+    text-align: center;
+    transition: all 0.4s ease;
+  }
+
+  .booking-section:hover {
+    background: linear-gradient(135deg, #ff5722 0%, #ff7043 100%);
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.1);
+  }
+
+  .booking-form {
+    background: var(--bg-secondary);
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 50px;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .booking-form:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  }
+
+  .booking-form h3 {
+    font-size: 32px;
+    color: var(--text-primary);
+    margin-bottom: 40px;
+    border-bottom: 4px solid #ff6b35;
+    padding-bottom: 20px;
+    transition: all 0.3s ease;
+  }
+
+  .booking-form:hover h3 {
+    border-bottom-color: #ff8c42;
+    transform: translateY(-3px);
+  }
+
+  .booking-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px;
+    margin-bottom: 30px;
+  }
+
+  .form-group {
+    text-align: left;
+    transition: all 0.3s ease;
+  }
+
+  .form-group:hover {
+    transform: translateY(-3px);
+  }
+
+  .form-group label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: var(--text-primary);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+  }
+
+  .form-group:hover label {
+    color: #ff6b35;
+    transform: translateX(3px);
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 14px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 15px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .form-group input:hover,
+  .form-group select:hover {
+    border-color: #ff6b35;
+    box-shadow: 0 0 8px rgba(255, 107, 53, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .form-group input:focus,
+  .form-group select:focus {
+    outline: none;
+    border-color: #ff6b35;
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.4);
+    transform: translateY(-3px);
+  }
+
+  /* ============================================
+     BUTTON STYLES WITH HOVER
+     ============================================ */
+
+  .btn {
+    border: none;
+    padding: 14px 28px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: inline-block;
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+    transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1;
+  }
+
+  .btn:hover::before {
+    left: 100%;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+    color: white;
+    box-shadow: 0 8px 20px rgba(255, 107, 53, 0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(255, 107, 53, 0.5);
+  }
+
+  .btn-primary:active {
+    transform: translateY(-1px) scale(0.98);
+  }
+
+  .btn-full {
+    width: 100%;
+  }
+
+  /* ============================================
+     CARS GRID WITH HOVER
+     ============================================ */
+
+  .cars-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 25px;
+    padding: 0;
+  }
+
+  .cars-grid-large {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 30px;
+    padding: 0;
+  }
+
+  .car-card,
+  .car-card-large {
+    background: rgba(255, 107, 53, 0.08);
+    border: 1px solid rgba(255, 107, 53, 0.2);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    cursor: pointer;
+  }
+
+  [data-theme="light"] .car-card,
+  [data-theme="light"] .car-card-large {
+    background: rgba(255, 107, 53, 0.05);
+    border-color: rgba(255, 107, 53, 0.15);
+  }
+
+  .car-card:hover,
+  .car-card.hover-active,
+  .car-card-large:hover,
+  .car-card-large.hover-active {
+    transform: translateY(-12px) scale(1.02);
+    border-color: #ff6b35;
+    box-shadow: 0 25px 50px rgba(255, 107, 53, 0.25);
+  }
+
+  .car-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 25px;
+    font-size: 12px;
+    font-weight: 700;
+    z-index: 2;
+    text-transform: uppercase;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .car-card:hover .car-badge,
+  .car-card.hover-active .car-badge,
+  .car-card-large:hover .car-badge,
+  .car-card-large.hover-active .car-badge {
+    transform: translateY(-5px) scale(1.1);
+    box-shadow: 0 8px 20px rgba(255, 107, 53, 0.4);
+  }
+
+  .car-image-wrapper,
+  .car-image-wrapper-large {
+    position: relative;
+    overflow: hidden;
+    height: 200px;
+  }
+
+  .car-card-large .car-image-wrapper {
+    height: 240px;
+  }
+
+  .car-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .car-card:hover .car-image,
+  .car-card.hover-active .car-image,
+  .car-card-large:hover .car-image,
+  .car-card-large.hover-active .car-image {
+    transform: scale(1.15) rotate(3deg);
+  }
+
+  .image-overlay,
+  .image-overlay-large {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 107, 53, 0.2), transparent);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .car-card:hover .image-overlay,
+  .car-card.hover-active .image-overlay,
+  .car-card-large:hover .image-overlay-large,
+  .car-card-large.hover-active .image-overlay-large {
+    opacity: 1;
+  }
+
+  .car-info,
+  .car-info-large {
+    padding: 20px;
+    transition: all 0.3s ease;
+  }
+
+  .car-card-large .car-info-large {
+    padding: 25px;
+  }
+
+  .car-card:hover .car-info,
+  .car-card.hover-active .car-info,
+  .car-card-large:hover .car-info-large,
+  .car-card-large.hover-active .car-info-large {
+    transform: translateY(3px);
+  }
+
+  .car-info h4,
+  .car-info-large h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .car-card-large h3 {
+    font-size: 20px;
+  }
+
+  .car-card:hover .car-info h4,
+  .car-card.hover-active .car-info h4,
+  .car-card-large:hover .car-info-large h3,
+  .car-card-large.hover-active .car-info-large h3 {
+    color: #ff6b35;
+    transform: translateX(5px);
+  }
+
+  .year {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+  }
+
+  .car-card:hover .year,
+  .car-card.hover-active .year {
+    color: #ff6b35;
+  }
+
+  .specs,
+  .specs-large {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 15px;
+    font-size: 13px;
+    transition: all 0.3s ease;
+  }
+
+  .specs-large {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .specs span,
+  .specs-large span {
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .car-card:hover .specs span,
+  .car-card.hover-active .specs span,
+  .car-card-large:hover .specs-large span,
+  .car-card-large.hover-active .specs-large span {
+    transform: scale(1.1);
+    text-shadow: 0 0 10px rgba(255, 107, 53, 0.3);
+  }
+
+  .price,
+  .price-large {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 107, 53, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .price-large {
+    padding-top: 20px;
+  }
+
+  .car-card:hover .price,
+  .car-card.hover-active .price,
+  .car-card-large:hover .price-large,
+  .car-card-large.hover-active .price-large {
+    border-top-color: #ff6b35;
+  }
+
+  .price-value {
+    font-weight: 700;
+    color: #ff6b35;
+    font-size: 18px;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .price-large .price-value {
+    font-size: 22px;
+  }
+
+  .car-card:hover .price-value,
+  .car-card.hover-active .price-value,
+  .car-card-large:hover .price-value,
+  .car-card-large.hover-active .price-value {
+    transform: scale(1.15);
+  }
+
+  .price-period {
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+  }
+
+  /* ============================================
+     SECTION STYLES WITH HOVER
+     ============================================ */
+
+  .section {
+    padding: 80px 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    transition: all 0.4s ease;
+  }
+
+  .section:hover {
+    transform: translateY(-2px);
+  }
+
+  .section h2 {
+    text-align: center;
+    font-size: 42px;
+    margin-bottom: 50px;
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .section:hover h2 {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 10px rgba(255, 107, 53, 0.2));
+  }
+
+  /* ============================================
+     ADVANTAGES SECTION WITH HOVER
+     ============================================ */
+
+  .advantages {
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 107, 53, 0.05) 100%);
+    transition: all 0.4s ease;
+  }
+
+  .advantages:hover {
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.15) 0%, rgba(255, 107, 53, 0.08) 100%);
+  }
+
+  .advantages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+  }
+
+  .advantage-card {
+    background: var(--bg-secondary);
+    padding: 35px;
+    border-radius: 14px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .advantage-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255, 107, 53, 0.1) 0%, transparent 70%);
+    transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 0;
+  }
+
+  .advantage-card:hover::before {
+    left: 100%;
+  }
+
+  .advantage-card:hover {
+    transform: translateY(-12px) scale(1.02);
+    box-shadow: 0 20px 50px rgba(255, 107, 53, 0.2);
+    border-color: #ff6b35;
+  }
+
+  .adv-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+    display: inline-block;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    z-index: 1;
+  }
+
+  .advantage-card:hover .adv-icon {
+    transform: scale(1.2) rotate(15deg) translateY(-10px);
+    filter: drop-shadow(0 10px 20px rgba(255, 107, 53, 0.3));
+  }
+
+  .advantage-card h4 {
+    font-size: 18px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+  }
+
+  .advantage-card:hover h4 {
+    color: #ff6b35;
+    transform: translateY(-3px);
+  }
+
+  .advantage-card p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+  }
+
+  .advantage-card:hover p {
+    color: var(--text-primary);
+  }
+
+  /* ============================================
+     REQUIREMENTS SECTION WITH HOVER
+     ============================================ */
+
+  .requirements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 25px;
+  }
+
+  .requirement-card {
+    background: rgba(255, 107, 53, 0.1);
+    border: 2px solid rgba(255, 107, 53, 0.3);
+    padding: 30px;
+    border-radius: 12px;
+    text-align: center;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .requirement-card::after {
+    content: '';
+    position: absolute;
+    bottom: -50%;
+    left: 50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 107, 53, 0.15) 0%, transparent 60%);
+    transition: all 0.4s ease;
+    transform: translateX(-50%);
+  }
+
+  .requirement-card:hover {
+    border-color: #ff6b35;
+    box-shadow: 0 15px 40px rgba(255, 107, 53, 0.2);
+    transform: translateY(-10px) scale(1.02);
+  }
+
+  .requirement-card:hover::after {
+    bottom: -20%;
+  }
+
+  .req-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+    color: white;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 26px;
+    margin-bottom: 20px;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    z-index: 1;
+  }
+
+  .requirement-card:hover .req-number {
+    transform: scale(1.2) rotate(360deg);
+    box-shadow: 0 10px 30px rgba(255, 107, 53, 0.4);
+  }
+
+  .requirement-card h4 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+  }
+
+  .requirement-card:hover h4 {
+    color: #ff6b35;
+    transform: translateY(-3px);
+  }
+
+  .requirement-card p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+  }
+
+  .requirement-card:hover p {
+    color: var(--text-primary);
+  }
+
+  /* ============================================
+     ABOUT PAGE WITH HOVER
+     ============================================ */
+
+  .page-about {
+    padding-bottom: 80px;
+  }
+
+  .about-content {
+    background: rgba(255, 107, 53, 0.1);
+    border: 1px solid rgba(255, 107, 53, 0.2);
+    padding: 40px;
+    border-radius: 14px;
+    max-width: 900px;
+    margin: 40px auto;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .about-content:hover {
+    border-color: #ff6b35;
+    box-shadow: 0 20px 60px rgba(255, 107, 53, 0.15);
+    transform: translateY(-5px);
+  }
+
+  .about-desc {
+    font-size: 16px;
+    line-height: 1.8;
+    margin-bottom: 30px;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+  }
+
+  .about-content:hover .about-desc {
+    color: var(--text-primary);
+  }
+
+  .about-content h3 {
+    font-size: 24px;
+    color: #ff6b35;
+    margin: 30px 0 20px 0;
+    transition: all 0.3s ease;
+  }
+
+  .about-content:hover h3 {
+    transform: translateX(10px);
+    text-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
+  }
+
+  .advantages-list {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .advantage-item {
+    font-size: 16px;
+    line-height: 1.6;
+    padding: 12px 0;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .advantage-item:hover {
+    color: #ff6b35;
+    transform: translateX(10px);
+    padding-left: 10px;
+  }
+
+  .about-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 25px;
+    margin-top: 40px;
+  }
+
+  .info-card {
+    background: var(--bg-secondary);
+    padding: 30px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .info-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(255, 107, 53, 0.15);
+    border-color: #ff6b35;
+  }
+
+  .info-card h4 {
+    font-size: 18px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+  }
+
+  .info-card:hover h4 {
+    color: #ff6b35;
+    transform: scale(1.1);
+  }
+
+  .info-card p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    transition: all 0.3s ease;
+  }
+
+  .info-card:hover p {
+    color: var(--text-primary);
+  }
+
+  /* ============================================
+     CONTACTS PAGE WITH HOVER
+     ============================================ */
+
+  .page-contacts {
+    padding-bottom: 80px;
+  }
+
+  .contacts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+    max-width: 1200px;
+    margin: 40px auto;
+  }
+
+  .contact-card {
+    background: rgba(255, 107, 53, 0.1);
+    border: 1px solid rgba(255, 107, 53, 0.2);
+    padding: 35px;
+    border-radius: 14px;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .contact-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 107, 53, 0.1) 0%, transparent 60%);
+    transition: all 0.4s ease;
+  }
+
+  .contact-card:hover::before {
+    top: -20%;
+    right: -20%;
+  }
+
+  .contact-card:hover {
+    transform: translateY(-12px) scale(1.02);
+    border-color: #ff6b35;
+    box-shadow: 0 20px 50px rgba(255, 107, 53, 0.2);
+  }
+
+  .contact-card h3 {
+    font-size: 20px;
+    color: #ff6b35;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+  }
+
+  .contact-card:hover h3 {
+    transform: translateX(5px);
+    text-shadow: 0 0 15px rgba(255, 107, 53, 0.3);
+  }
+
+  .contact-card p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 10px;
+    line-height: 1.6;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+  }
+
+  .contact-card:hover p {
+    color: var(--text-primary);
+  }
+
+  .contact-items {
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .contact-link {
+    color: #ff6b35;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: inline-block;
+  }
+
+  .contact-link:hover {
+    color: #ff8c42;
+    text-decoration: underline;
+    transform: translateX(5px) scale(1.05);
+  }
+
+  /* ============================================
+     FOOTER WITH HOVER
+     ============================================ */
+
+  .footer {
+    background: linear-gradient(135deg, #1a1f2e 0%, #0f1419 100%);
+    color: white;
+    padding: 60px 40px 30px;
+    margin-top: 80px;
+    transition: all 0.4s ease;
+  }
+
+  [data-theme="light"] .footer {
+    background: linear-gradient(135deg, #f0f2f5 0%, #e8eaef 100%);
+    color: #1a1f2e;
+  }
+
+  .footer:hover {
+    box-shadow: inset 0 20px 60px rgba(255, 107, 53, 0.1);
+  }
+
+  .footer-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 40px;
+    max-width: 1400px;
+    margin: 0 auto 40px;
+  }
+
+  .footer-column h4 {
+    font-size: 16px;
+    margin-bottom: 20px;
+    color: #ff6b35;
+    font-weight: 700;
+    transition: all 0.3s ease;
+  }
+
+  .footer-column:hover h4 {
+    transform: translateX(5px);
+    text-shadow: 0 0 15px rgba(255, 107, 53, 0.3);
+  }
+
+  .footer-column p {
+    font-size: 14px;
+    line-height: 1.8;
+    margin-bottom: 10px;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+  }
+
+  .footer-column:hover p {
+    opacity: 1;
+  }
+
+  .footer-column a {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    font-size: 14px;
+    margin-bottom: 10px;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    opacity: 0.8;
+    position: relative;
+    padding-left: 0;
+  }
+
+  .footer-column a::before {
+    content: '→ ';
+    opacity: 0;
+    transition: all 0.3s ease;
+    position: absolute;
+    left: 0;
+  }
+
+  .footer-column a:hover {
+    color: #ff6b35;
+    opacity: 1;
+    padding-left: 15px;
+  }
+
+  .footer-column a:hover::before {
+    opacity: 1;
+  }
+
+  .footer-bottom {
+    text-align: center;
+    padding-top: 30px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 13px;
+    opacity: 0.7;
+    transition: all 0.3s ease;
+  }
+
+  .footer-bottom:hover {
+    opacity: 1;
+  }
+
+  .footer-bottom p {
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .footer-bottom:hover p {
+    transform: translateY(-2px);
+  }
+
+  /* ============================================
+     RESPONSIVE STYLES
+     ============================================ */
+
+  @media (max-width: 1024px) {
+    .hero {
+      grid-template-columns: 1fr;
+      padding: 60px 30px;
+      gap: 40px;
+    }
+
+    .booking-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .section {
+      padding: 60px 30px;
+    }
+
+    .page-header {
+      padding: 40px 30px 30px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .header {
+      padding: 15px 20px;
+    }
+
+    .nav-link:hover {
+      transform: none;
+    }
+
+    .btn:hover {
+      transform: scale(1.02);
+    }
+
+    .car-card:hover,
+    .car-card-large:hover {
+      transform: translateY(-8px);
+    }
+
+    .advantage-card:hover {
+      transform: translateY(-8px);
+    }
+
+    .requirement-card:hover {
+      transform: translateY(-8px);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .logo:hover {
+      transform: scale(1.02);
+    }
+
+    .btn:hover {
+      transform: none;
+    }
+
+    .car-card:hover,
+    .car-card-large:hover {
+      transform: none;
+    }
   }
 `;
-
-export default DLRentApp;
-
-
-
-
-
-
-
-
-
-
-
