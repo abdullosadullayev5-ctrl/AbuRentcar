@@ -24,10 +24,13 @@ if (typeof window !== 'undefined') {
 const providers = {
   google: new GoogleAuthProvider(),
   apple: new OAuthProvider('apple.com'),
+  microsoft: new OAuthProvider('microsoft.com'),
 };
 
 providers.google.setCustomParameters({ prompt: 'select_account' });
 providers.apple.addScope('email');
 providers.apple.addScope('name');
+providers.microsoft.addScope('email');
+providers.microsoft.addScope('profile');
 
 export { app, auth, providers };  

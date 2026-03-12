@@ -477,14 +477,14 @@ function DLRentApp() {
     }
   };
 
-  const socialLogin = async (provider: 'google' | 'apple') => {
+  const socialLogin = async (provider: 'google' | 'apple' | 'microsoft') => {
     try {
       await signInWithRedirect(firebaseAuth, providers[provider]);
     } catch (error) {
       const code = (error as { code?: string })?.code || 'unknown';
       console.error('Social redirect login error:', error);
       const host = typeof window !== 'undefined' ? window.location.hostname : 'current-domain';
-      alert(`Google/Apple login bajarilmadi (${code}). Firebase > Authentication > Settings > Authorized domains ga ${host} ni qo'shing.`);
+      alert(`Social login bajarilmadi (${code}). Firebase > Authentication > Settings > Authorized domains ga ${host} ni qo'shing.`);
     }
   };
 
@@ -629,6 +629,7 @@ function DLRentApp() {
             <div className="social-row">
               <button type="button" className="social google" onClick={() => socialLogin('google')}>{t.google}</button>
               <button type="button" className="social apple" onClick={() => socialLogin('apple')}>{t.apple}</button>
+              <button type="button" className="social microsoft" onClick={() => socialLogin('microsoft')}>{t.microsoft}</button>
             </div>
             <small>Admin: Admin234 / Admin123</small>
           </form>
@@ -1030,11 +1031,12 @@ const styles = `
     animation:floatIn .55s ease both;
   }
   .ok-note{padding:10px 12px;border-radius:12px;background:#16a34a22;border:1px solid #22c55e55;color:#d1fae5}
-  .social-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .social-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   .social{border-radius:12px;transition:.25s;box-shadow:0 10px 18px #0000002b}
   .social:hover{transform:translateY(-2px);box-shadow:0 16px 26px #0000003f}
   .google{background:#fff;color:#1f2937}
   .apple{background:#1f2430;color:#fff}
+  .microsoft{background:linear-gradient(135deg,#0078d4,#3aa0ff);color:#fff}
   .hero,.page{max-width:1300px;margin:22px auto;animation:floatIn .5s ease both}
   .info-block{margin-top:14px}
   .info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
@@ -1144,7 +1146,7 @@ const styles = `
     .panel{border-radius:20px;padding:16px;box-shadow:0 14px 28px #0000003b}
     .login{padding:18px;border-radius:22px}
     .login input,.login textarea{caret-color:transparent}
-    .social-row{gap:10px}
+    .social-row{gap:10px;grid-template-columns:1fr}
     .hero,.page{margin:12px auto}
     .card{border-radius:20px;padding:16px;box-shadow:0 16px 32px #0000003f}
     .card img{height:220px;border-radius:16px}
