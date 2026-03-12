@@ -11,8 +11,7 @@ const fallbackConfig = {
   measurementId: 'G-GHRT1FMTZL',
 };
 
-const firebaseConfig = fallbackConfig;
-
+const firebaseConfig = fallbackConfig;  
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
@@ -28,5 +27,7 @@ const providers = {
 };
 
 providers.google.setCustomParameters({ prompt: 'select_account' });
+providers.apple.addScope('email');
+providers.apple.addScope('name');
 
-export { app, auth, providers };
+export { app, auth, providers };  
